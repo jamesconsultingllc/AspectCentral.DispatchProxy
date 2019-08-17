@@ -1,23 +1,20 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
-    <Version>1.0.0-alpha</Version>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <Company>James Consulting LLC</Company>
-    <Authors>Rudy James</Authors>
-    <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects/2</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/blob/master/LICENSE</PackageLicenseUrl>
-    <Copyright>Copyright © 2019. All rights reserved.</Copyright>
-    <PackageTags>AOP, DispatchProxy, aspect oriented programming</PackageTags>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <Company>James Consulting LLC</Company>
+        <Authors>Rudy James</Authors>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <Copyright>Copyright © 2019</Copyright>
+        <PackageTags>AOP, aspect oriented programming, interceptors, DispatchProxy</PackageTags>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <LangVersion>latest</LangVersion>
+        <ProjectGuid>5112A87D-F8F2-43A5-B566-9F104BC83954</ProjectGuid>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AspectCentral.Abstractions" Version="1.0.0-alpha" />
-    <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
-  </ItemGroup>
-
+    <ItemGroup>
+      <PackageReference Include="AspectCentral.Abstractions" Version="1.0.0-alpha4" />
+      <PackageReference Include="JamesConsulting" Version="1.0.0-alpha2" />
+      <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
+    </ItemGroup>
 </Project>

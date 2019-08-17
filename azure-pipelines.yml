@@ -1,0 +1,56 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+variables:
+  SonarKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
+  Version: '1.0.0-alpha1'
+  buildConfiguration: 'Release'
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'Aspect Central'
+    organization: 'james-consulting-llc'
+    scannerMode: 'MSBuild'
+    projectKey: '$(SonarKey)'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    feedsToUse: 'select'    
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: 'AspectCentral.DispatchProxy.sln'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: test
+    projects: '**/*.Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/AspectCentral.DispatchProxy.csproj'
+    nobuild: true
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: Version
+    arguments: '--configuration $(buildConfiguration)'
+- task: SonarCloudAnalyze@1
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    Contents: '**\bin\$(buildConfiguration)\*.nupkg'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+
