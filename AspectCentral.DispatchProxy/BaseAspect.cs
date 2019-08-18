@@ -14,8 +14,10 @@ using System.Reflection;
 using System.Threading.Tasks;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
+using JamesConsulting;
 using JamesConsulting.Reflection;
 using Microsoft.Extensions.Logging;
+using MethodTypeOptions = AspectCentral.Abstractions.MethodTypeOptions;
 
 namespace AspectCentral.DispatchProxy
 {
@@ -57,27 +59,6 @@ namespace AspectCentral.DispatchProxy
         protected Type ObjectType { get; set; }
 
         /// <summary>
-        ///     The create result.
-        /// </summary>
-        /// <param name="methodInfo">
-        ///     The method Info.
-        /// </param>
-        /// <param name="value">
-        ///     The value.
-        /// </param>
-        /// <returns>
-        ///     The <see cref="object" />.
-        /// </returns>
-        protected static object CreateTaskResult(MethodInfo methodInfo, dynamic value)
-        {
-            var resultType = methodInfo.ReturnType.GetGenericArguments()[0];
-            var taskSource = Activator.CreateInstance(JamesConsulting.Constants.TaskCompletionSourceType.MakeGenericType(resultType));
-            var setRetResultMethodInfo = taskSource.GetType().GetMethod("SetResult", BindingFlags.Instance | BindingFlags.Public);
-            setRetResultMethodInfo?.Invoke(taskSource, new[] {value});
-            return taskSource.GetType().GetProperty("Task")?.GetValue(taskSource);
-        }
-
-        /// <summary>
         ///     The generate aspect context.
         /// </summary>
         /// <param name="targetMethod">
@@ -112,7 +93,10 @@ namespace AspectCentral.DispatchProxy
         protected virtual string GenerateMethodNameWithArguments(MethodInfo targetMethod, object[] args, out MethodInfo implementationMethod)
         {
             if (!JamesConsulting.Constants.TypeMethods.ContainsKey(ObjectType))
+            {
+                Logger.LogDebug($"Added {ObjectType.FullName} methods to cache");
                 JamesConsulting.Constants.TypeMethods[ObjectType] = ObjectType.GetMethods();
+            }
 
             var methodName = targetMethod.ToString();
             implementationMethod = JamesConsulting.Constants.TypeMethods[ObjectType].Single(x => x.ToString() == methodName);
@@ -134,20 +118,28 @@ namespace AspectCentral.DispatchProxy
         protected override object Invoke(MethodInfo targetMethod, object[] args)
         {
             var aspectContext = GenerateAspectContext(targetMethod, args);
-
+            
+            Logger.LogDebug($"AspectContext generated");
+            
             if (ShouldIntercept(aspectContext))
             {
                 PreInvoke(aspectContext);
                 var isAsync = targetMethod.IsAsync();
 
                 if (aspectContext.InvokeMethod)
+                {
+                    Logger.LogDebug($"Invoking {aspectContext.InvocationString}");
                     Invoke(aspectContext);
+                }
 
                 if (!isAsync)
+                {
                     PostInvoke(aspectContext);
+                }
             }
             else
             {
+                Logger.LogDebug($"Invoking {aspectContext.InvocationString} without interception");
                 Invoke(aspectContext);
             }
 
@@ -177,9 +169,6 @@ namespace AspectCentral.DispatchProxy
         /// <summary>
         ///     The should intercept.
         /// </summary>
-        /// <param name="targetMethod">
-        ///     The target method.
-        /// </param>
         /// <returns>
         ///     The <see cref="bool" />.
         /// </returns>

@@ -34,11 +34,6 @@ namespace AspectCentral.DispatchProxy.Profiling
         private readonly Stopwatch stopWatch = new Stopwatch();
 
         /// <summary>
-        ///     The logger.
-        /// </summary>
-        private ILogger logger;
-
-        /// <summary>
         /// The create.
         /// </summary>
         /// <param name="instance">
@@ -68,7 +63,7 @@ namespace AspectCentral.DispatchProxy.Profiling
             object proxy = Create<T, ProfilingAspect<T>>();
             ((ProfilingAspect<T>)proxy).Instance = instance;
             ((ProfilingAspect<T>)proxy).ObjectType = type;
-            ((ProfilingAspect<T>)proxy).logger = loggerFactory.CreateLogger(type.FullName);
+            ((ProfilingAspect<T>)proxy).Logger = loggerFactory.CreateLogger(type.FullName);
             ((ProfilingAspect<T>)proxy).AspectConfigurationProvider = aspectConfigurationProvider;
             ((ProfilingAspect<T>)proxy).FactoryType = profilingAspectFactoryType;
             return (T)proxy;
@@ -84,7 +79,7 @@ namespace AspectCentral.DispatchProxy.Profiling
         {
             stopWatch.Stop();
             var ts = stopWatch.Elapsed;
-            logger.LogInformation($"Runtime {ts.Hours:00}:{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}");
+            Logger.LogInformation($"Runtime {ts.Hours:00}:{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}");
         }
 
         /// <summary>
@@ -95,7 +90,7 @@ namespace AspectCentral.DispatchProxy.Profiling
         /// </param>
         protected override void PreInvoke(AspectContext aspectContext)
         {
-            logger.LogInformation("Starting Stopwatch");
+            Logger.LogInformation("Starting Stopwatch");
             stopWatch.Start();
         }
     }

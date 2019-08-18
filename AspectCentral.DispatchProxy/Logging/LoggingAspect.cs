@@ -28,11 +28,6 @@ namespace AspectCentral.DispatchProxy.Logging
         public static readonly Type Type = typeof(LoggingAspect<>);
 
         /// <summary>
-        ///     The logger.
-        /// </summary>
-        private ILogger logger;
-
-        /// <summary>
         /// The create.
         /// </summary>
         /// <param name="instance">
@@ -62,7 +57,7 @@ namespace AspectCentral.DispatchProxy.Logging
             object proxy = Create<T, LoggingAspect<T>>();
             ((LoggingAspect<T>)proxy).Instance = instance;
             ((LoggingAspect<T>)proxy).ObjectType = type;
-            ((LoggingAspect<T>)proxy).logger = loggerFactory.CreateLogger(type.FullName);
+            ((LoggingAspect<T>)proxy).Logger = loggerFactory.CreateLogger(type.FullName);
             ((LoggingAspect<T>)proxy).AspectConfigurationProvider = aspectConfigurationProvider;
             ((LoggingAspect<T>)proxy).FactoryType = loggingAspectFactoryType;
             return (T)proxy;
@@ -76,9 +71,9 @@ namespace AspectCentral.DispatchProxy.Logging
         /// </param>
         protected override void PostInvoke(AspectContext aspectContext)
         {
-            if (aspectContext.TargetMethod.HasReturnValue()) logger.LogInformation($"Return value : {aspectContext.ReturnValue}");
+            if (aspectContext.TargetMethod.HasReturnValue()) Logger.LogInformation($"Return value : {aspectContext.ReturnValue}");
 
-            logger.LogInformation($"{aspectContext.InvocationString} End");
+            Logger.LogInformation($"{aspectContext.InvocationString} End");
         }
 
         /// <summary>
@@ -89,7 +84,7 @@ namespace AspectCentral.DispatchProxy.Logging
         /// </param>
         protected override void PreInvoke(AspectContext aspectContext)
         {
-            logger.LogInformation($"{aspectContext.InvocationString} Start");
+            Logger.LogInformation($"{aspectContext.InvocationString} Start");
         }
     }
 }

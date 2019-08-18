@@ -11,6 +11,7 @@
 using System;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
+using JamesConsulting.Threading;
 using Microsoft.Extensions.Logging;
 
 namespace AspectCentral.DispatchProxy.Tests
@@ -22,11 +23,6 @@ namespace AspectCentral.DispatchProxy.Tests
     /// </typeparam>
     public class BaseAspectTestClass<T> : BaseAspect<T>
     {
-        /// <summary>
-        ///     The logger.
-        /// </summary>
-        private ILogger logger;
-
         /// <summary>
         ///     The create.
         /// </summary>
@@ -49,7 +45,7 @@ namespace AspectCentral.DispatchProxy.Tests
             ((BaseAspectTestClass<T>) proxy).Instance = instance;
             ((BaseAspectTestClass<T>) proxy).ObjectType = type;
             ((BaseAspectTestClass<T>) proxy).AspectConfigurationProvider = inMemoryAspectConfigurationProvider;
-            ((BaseAspectTestClass<T>) proxy).logger = loggerFactory.CreateLogger(type.FullName);
+            ((BaseAspectTestClass<T>) proxy).Logger = loggerFactory.CreateLogger(type.FullName);
             ((BaseAspectTestClass<T>) proxy).FactoryType = TestAspectFactory.Type;
             return (T) proxy;
         }
@@ -62,7 +58,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// </param>
         protected override void PostInvoke(AspectContext aspectContext)
         {
-            logger.LogInformation("Should not be invoked");
+            Logger.LogInformation("Should not be invoked");
         }
 
         /// <summary>
@@ -73,8 +69,8 @@ namespace AspectCentral.DispatchProxy.Tests
         /// </param>
         protected override void PreInvoke(AspectContext aspectContext)
         {
-            logger.LogInformation("Setting result");
-            aspectContext.ReturnValue = CreateTaskResult(aspectContext.TargetMethod, new MyUnitTestClass(12, "testing 123"));
+            Logger.LogInformation("Setting result");
+            aspectContext.ReturnValue = aspectContext.TargetMethod.CreateTaskResult(new MyUnitTestClass(12, "testing 123"));
             aspectContext.InvokeMethod = false;
         }
     }
