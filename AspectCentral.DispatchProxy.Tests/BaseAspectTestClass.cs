@@ -56,7 +56,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// <param name="aspectContext">
         ///     The aspect context.
         /// </param>
-        protected override void PostInvoke(AspectContext aspectContext)
+        public override void PostInvoke(AspectContext aspectContext)
         {
             Logger.LogInformation("Should not be invoked");
         }
@@ -67,7 +67,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// <param name="aspectContext">
         ///     The aspect context.
         /// </param>
-        protected override void PreInvoke(AspectContext aspectContext)
+        public override void PreInvoke(AspectContext aspectContext)
         {
             Logger.LogInformation("Setting result");
             aspectContext.ReturnValue = aspectContext.TargetMethod.CreateTaskResult(new MyUnitTestClass(12, "testing 123"));

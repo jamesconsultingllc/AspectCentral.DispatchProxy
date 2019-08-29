@@ -41,7 +41,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
             var aspects = builder.AspectConfigurationProvider.ConfigurationEntries[0].GetAspects().ToArray();
             Assert.Equal(typeof(MyTestInterface), builder.AspectConfigurationProvider.ConfigurationEntries[0].ServiceDescriptor.ImplementationType);
             Assert.Single(aspects);
-            Assert.Equal(LoggingAspectFactory.LoggingAspectFactoryType, aspects[0].AspectFactoryType);
+            Assert.Equal(LoggingAspectFactory.LoggingAspectFactoryType, aspects[0].AspectType);
         }
     }
 }

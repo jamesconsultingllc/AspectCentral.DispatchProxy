@@ -14,7 +14,6 @@ using System.Reflection;
 using System.Threading.Tasks;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
-using JamesConsulting;
 using JamesConsulting.Reflection;
 using Microsoft.Extensions.Logging;
 using MethodTypeOptions = AspectCentral.Abstractions.MethodTypeOptions;
@@ -26,7 +25,7 @@ namespace AspectCentral.DispatchProxy
     /// </summary>
     /// <typeparam name="T">
     /// </typeparam>
-    public abstract class BaseAspect<T> : System.Reflection.DispatchProxy
+    public abstract class BaseAspect<T> : System.Reflection.DispatchProxy, IAspect
     {
         /// <summary>
         ///     The process function method info.
@@ -70,7 +69,7 @@ namespace AspectCentral.DispatchProxy
         /// <returns>
         ///     The <see cref="AspectContext" />.
         /// </returns>
-        protected virtual AspectContext GenerateAspectContext(MethodInfo targetMethod, object[] args)
+        public virtual AspectContext GenerateAspectContext(MethodInfo targetMethod, object[] args)
         {
             return new AspectContext(targetMethod, args) {InvocationString = GenerateMethodNameWithArguments(targetMethod, args, out var implementationMethod), InstanceMethod = implementationMethod};
         }
@@ -90,7 +89,7 @@ namespace AspectCentral.DispatchProxy
         /// <returns>
         ///     The <see cref="string" />.
         /// </returns>
-        protected virtual string GenerateMethodNameWithArguments(MethodInfo targetMethod, object[] args, out MethodInfo implementationMethod)
+        public virtual string GenerateMethodNameWithArguments(MethodInfo targetMethod, object[] args, out MethodInfo implementationMethod)
         {
             if (!JamesConsulting.Constants.TypeMethods.ContainsKey(ObjectType))
             {
@@ -152,7 +151,7 @@ namespace AspectCentral.DispatchProxy
         /// <param name="aspectContext">
         ///     The aspect Context.
         /// </param>
-        protected virtual void PostInvoke(AspectContext aspectContext)
+        public virtual void PostInvoke(AspectContext aspectContext)
         {
         }
 
@@ -162,7 +161,7 @@ namespace AspectCentral.DispatchProxy
         /// <param name="aspectContext">
         ///     The aspect Context.
         /// </param>
-        protected virtual void PreInvoke(AspectContext aspectContext)
+        public virtual void PreInvoke(AspectContext aspectContext)
         {
         }
 
@@ -172,7 +171,7 @@ namespace AspectCentral.DispatchProxy
         /// <returns>
         ///     The <see cref="bool" />.
         /// </returns>
-        protected virtual bool ShouldIntercept(AspectContext aspectContext)
+        public virtual bool ShouldIntercept(AspectContext aspectContext)
         {
             return AspectConfigurationProvider.ShouldIntercept(FactoryType, aspectContext.TargetMethod.DeclaringType, ObjectType, aspectContext.TargetMethod);
         }

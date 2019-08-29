@@ -13,7 +13,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="AspectCentral.Abstractions" Version="1.0.0-alpha4" />
+      <PackageReference Include="AspectCentral.Abstractions" Version="1.0.0-alpha6" />
       <PackageReference Include="JamesConsulting" Version="1.0.0-alpha2" />
       <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
     </ItemGroup>

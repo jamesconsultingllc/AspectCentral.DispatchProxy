@@ -34,7 +34,7 @@ namespace AspectCentral.DispatchProxy
         {
             var aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
             serviceCollection.TryAddSingleton<IAspectConfigurationProvider>(aspectConfigurationProvider);
-            return new AspectRegistrationBuilder(serviceCollection.RegisterAspectFactories(),
+            return new DispatchProxyAspectRegistrationBuilder(serviceCollection.RegisterAspectFactories(),
                 aspectConfigurationProvider);
         }
         /// <summary>
@@ -123,7 +123,7 @@ namespace AspectCentral.DispatchProxy
             foreach (var aspect in aspectConfiguration.GetAspects())
             {
                 var temp = factory;
-                var interceptorFactory = (IAspectFactory) serviceProvider.GetService(aspect.AspectFactoryType);
+                var interceptorFactory = (IAspectFactory) serviceProvider.GetService(aspect.AspectType);
                 factory = f => interceptorFactory.Create(temp(serviceProvider),
                     aspectConfiguration.ServiceDescriptor.ImplementationType);
             }

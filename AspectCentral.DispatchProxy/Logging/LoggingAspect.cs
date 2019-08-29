@@ -69,7 +69,7 @@ namespace AspectCentral.DispatchProxy.Logging
         /// <param name="aspectContext">
         /// The aspect context.
         /// </param>
-        protected override void PostInvoke(AspectContext aspectContext)
+        public override void PostInvoke(AspectContext aspectContext)
         {
             if (aspectContext.TargetMethod.HasReturnValue()) Logger.LogInformation($"Return value : {aspectContext.ReturnValue}");
 
@@ -82,7 +82,7 @@ namespace AspectCentral.DispatchProxy.Logging
         /// <param name="aspectContext">
         /// The aspect context.
         /// </param>
-        protected override void PreInvoke(AspectContext aspectContext)
+        public override void PreInvoke(AspectContext aspectContext)
         {
             Logger.LogInformation($"{aspectContext.InvocationString} Start");
         }

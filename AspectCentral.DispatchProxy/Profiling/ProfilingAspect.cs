@@ -75,7 +75,7 @@ namespace AspectCentral.DispatchProxy.Profiling
         /// <param name="aspectContext">
         /// The invocation context.
         /// </param>
-        protected override void PostInvoke(AspectContext aspectContext)
+        public override void PostInvoke(AspectContext aspectContext)
         {
             stopWatch.Stop();
             var ts = stopWatch.Elapsed;
@@ -88,7 +88,7 @@ namespace AspectCentral.DispatchProxy.Profiling
         /// <param name="aspectContext">
         /// The invocation context.
         /// </param>
-        protected override void PreInvoke(AspectContext aspectContext)
+        public override void PreInvoke(AspectContext aspectContext)
         {
             Logger.LogInformation("Starting Stopwatch");
             stopWatch.Start();

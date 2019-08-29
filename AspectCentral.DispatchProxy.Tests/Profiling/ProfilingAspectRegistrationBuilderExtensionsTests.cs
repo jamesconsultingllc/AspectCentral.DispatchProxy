@@ -39,7 +39,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
             var builder = new ServiceCollection().AddAspectSupport().AddTransient<ITestInterface, MyTestInterface>().AddProfilingAspect();
 
             var aspects = builder.AspectConfigurationProvider.ConfigurationEntries.Last().GetAspects().ToArray();
-            Assert.Equal(ProfilingAspectFactory.ProfilingAspectFactoryType, aspects[0].AspectFactoryType);
+            Assert.Equal(ProfilingAspectFactory.ProfilingAspectFactoryType, aspects[0].AspectType);
         }
     }
 }
