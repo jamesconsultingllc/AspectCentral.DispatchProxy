@@ -97,7 +97,9 @@ namespace AspectCentral.DispatchProxy
                 JamesConsulting.Constants.TypeMethods[ObjectType] = ObjectType.GetMethods();
             }
 
-            var methodName = targetMethod.ToString();
+            var methodName = targetMethod.IsGenericMethod
+                ? targetMethod.GetGenericMethodDefinition().ToString()
+                : targetMethod.ToString();
             implementationMethod = JamesConsulting.Constants.TypeMethods[ObjectType].Single(x => x.ToString() == methodName);
             return implementationMethod.ToInvocationString(args);
         }
