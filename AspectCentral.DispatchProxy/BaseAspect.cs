@@ -25,7 +25,7 @@ namespace AspectCentral.DispatchProxy
     /// </summary>
     /// <typeparam name="T">
     /// </typeparam>
-    public abstract class BaseAspect<T> : System.Reflection.DispatchProxy, IAspect
+    public abstract class BaseAspect<T> : System.Reflection.DispatchProxy
     {
         /// <summary>
         ///     The process function method info.

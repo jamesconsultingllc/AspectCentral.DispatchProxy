@@ -9,6 +9,7 @@
 
 using System;
 using System.Linq;
+using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using AspectCentral.DispatchProxy.Profiling;
@@ -30,11 +31,8 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void AddAspectSuccess()
         {
-            var aspectRegistrationBuilder = new ServiceCollection().AddAspectSupport().AddService(typeof(ITestInterface), typeof(MyTestInterface), ServiceLifetime.Scoped)
-                .AddAspect(LoggingAspectFactory.LoggingAspectFactoryType, null, typeof(MyTestInterface).GetMethods()).AddAspect(
-                    ProfilingAspectFactory.ProfilingAspectFactoryType,
-                    null,
-                    typeof(MyTestInterface).GetMethods());
+            var aspectRegistrationBuilder = new ServiceCollection().AddAspectSupport().AddScoped<ITestInterface, MyTestInterface>()
+                .AddLoggingAspect().AddProfilingAspect();
             var aspects = aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].GetAspects();
 
             aspects.Count().Should().Be(2);
