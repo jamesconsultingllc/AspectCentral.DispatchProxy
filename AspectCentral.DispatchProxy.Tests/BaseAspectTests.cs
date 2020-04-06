@@ -62,7 +62,6 @@ namespace AspectCentral.DispatchProxy.Tests
         public async Task TestCreatingTaskResultWhenMethodNotInvoked()
         {
             var result = await instance.GetClassByIdAsync(12).ConfigureAwait(false);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Once());
             Assert.Equal(new MyUnitTestClass(12, "12"), result);
         }
     }

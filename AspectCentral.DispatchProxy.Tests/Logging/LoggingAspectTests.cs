@@ -44,16 +44,6 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         private Mock<ILoggerFactory> loggerFactory;
 
         /// <summary>
-        ///     The my test method.
-        /// </summary>
-        [Fact]
-        public void MyTestMethod()
-        {
-            instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(2));
-        }
-
-        /// <summary>
         ///     The test initialize.
         /// </summary>
         public LoggingAspectTests()
@@ -74,32 +64,6 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
                 LoggingAspectFactory.LoggingAspectFactoryType);
         }
 
-        /// <summary>
-        /// The test logging async.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        [Fact]
-        public async Task TestLoggingAsync()
-        {
-            await instance.TestAsync(1, "2", null).ConfigureAwait(false);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(2));
-        }
-
-        /// <summary>
-        /// The test logging async with result.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        [Fact]
-        public async Task TestLoggingAsyncWithResult()
-        {
-            await instance.GetClassByIdAsync(1).ConfigureAwait(false);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(3));
-        }
-        
         [Fact]
         public void CreateNullInstanceThrowsArgumentNullException()
         {

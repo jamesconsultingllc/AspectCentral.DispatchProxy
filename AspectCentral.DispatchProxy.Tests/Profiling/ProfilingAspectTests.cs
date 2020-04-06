@@ -45,42 +45,6 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         private Mock<ILoggerFactory> loggerFactory;
 
         /// <summary>
-        ///     The test logging async.
-        /// </summary>
-        /// <returns>
-        ///     The <see cref="Task" />.
-        /// </returns>
-        [Fact]
-        public async Task ProfilingAsync()
-        {
-            await instance.TestAsync(1, "2", null).ConfigureAwait(false);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(2));
-        }
-
-        /// <summary>
-        ///     The test logging async with result.
-        /// </summary>
-        /// <returns>
-        ///     The <see cref="Task" />.
-        /// </returns>
-        [Fact]
-        public async Task ProfilingAsyncWithResult()
-        {
-            await instance.GetClassByIdAsync(1).ConfigureAwait(false);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(2));
-        }
-
-        /// <summary>
-        ///     The my test method.
-        /// </summary>
-        [Fact]
-        public void ProfilingSyncMethod()
-        {
-            instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.IsAny<object>(), It.IsAny<Exception>(), It.IsAny<Func<object, Exception, string>>()), Times.Exactly(2));
-        }
-
-        /// <summary>
         ///     The test initialize.
         /// </summary>
         public ProfilingAspectTests()
