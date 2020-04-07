@@ -57,5 +57,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// The <see cref="Task"/>.
         /// </returns>
         Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass);
+
+        void GenericTest<T>(int x, T entity, bool enable);
     }
 }

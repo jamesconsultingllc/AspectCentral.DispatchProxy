@@ -36,5 +36,9 @@ namespace AspectCentral.DispatchProxy.Tests
         {
             return Task.Delay(100);
         }
+
+        public void GenericTest<T>(int x, T entity, bool enable)
+        {
+        }
     }
 }

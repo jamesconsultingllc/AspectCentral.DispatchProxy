@@ -26,22 +26,32 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         /// <summary>
         ///     The aspect configuration provider
         /// </summary>
-        private IAspectConfigurationProvider aspectConfigurationProvider;
+        private readonly IAspectConfigurationProvider aspectConfigurationProvider;
 
         /// <summary>
         ///     The instance.
         /// </summary>
-        private ITestInterface instance;
+        private readonly ITestInterface instance;
 
         /// <summary>
         ///     The logger.
         /// </summary>
-        private Mock<ILogger> logger;
+        private readonly Mock<ILogger> logger;
 
         /// <summary>
         ///     The logger factory.
         /// </summary>
-        private Mock<ILoggerFactory> loggerFactory;
+        private readonly Mock<ILoggerFactory> loggerFactory;
+
+        /// <summary>
+        ///     The my test method.
+        /// </summary>
+        [Fact]
+        public void MyTestMethod()
+        {
+            instance.Test(1, "2", new MyUnitTestClass(1, "2"));
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+        }
 
         /// <summary>
         ///     The test initialize.
@@ -64,6 +74,32 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
                 LoggingAspectFactory.LoggingAspectFactoryType);
         }
 
+        /// <summary>
+        /// The test logging async.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="Task"/>.
+        /// </returns>
+        [Fact]
+        public async Task TestLoggingAsync()
+        {
+            await instance.TestAsync(1, "2", null).ConfigureAwait(false);
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+        }
+
+        /// <summary>
+        /// The test logging async with result.
+        /// </summary>
+        /// <returns>
+        /// The <see cref="Task"/>.
+        /// </returns>
+        [Fact]
+        public async Task TestLoggingAsyncWithResult()
+        {
+            await instance.GetClassByIdAsync(1).ConfigureAwait(false);
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(3));
+        }
+        
         [Fact]
         public void CreateNullInstanceThrowsArgumentNullException()
         {
