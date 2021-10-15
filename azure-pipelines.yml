@@ -4,7 +4,7 @@
 # https://aka.ms/yaml
 variables:
   SonarKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
-  Version: '1.0.0-alpha3'
+  Version: '1.0.0'
   buildConfiguration: 'Release'
 trigger:
 - master
@@ -19,6 +19,7 @@ steps:
     organization: 'james-consulting-llc'
     scannerMode: 'MSBuild'
     projectKey: '$(SonarKey)'
+    projectVersion: '$(Version)'
 - task: DotNetCoreCLI@2
   inputs:
     command: 'restore'
