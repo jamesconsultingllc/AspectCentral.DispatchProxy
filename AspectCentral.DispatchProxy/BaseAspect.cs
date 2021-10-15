@@ -212,7 +212,7 @@ namespace AspectCentral.DispatchProxy
         switch (aspectContext.MethodType)
         {
             case MethodTypeOptions.AsyncAction:
-                ProcessActionAsync(aspectContext);
+                ProcessAction(aspectContext);
                 break;
             case MethodTypeOptions.AsyncFunction:
                 CallProcessFunction(aspectContext);
@@ -243,12 +243,11 @@ namespace AspectCentral.DispatchProxy
     /// <returns>
     ///     The <see cref="Task" />.
     /// </returns>
-    private async Task ProcessActionAsync(AspectContext aspectContext)
+    private void ProcessAction(AspectContext aspectContext)
     {
         aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
         var task = (Task)aspectContext.ReturnValue;
-        await task;
-        PostInvoke(aspectContext);
+        task.ContinueWith((_, state) => PostInvoke((AspectContext)state), aspectContext);
     }
 
     /// <summary>

@@ -32,9 +32,9 @@ namespace AspectCentral.DispatchProxy.Tests
         }
 
         /// <inheritdoc />
-        public Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass)
+        public async Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass)
         {
-            return Task.Delay(100);
+            await Task.Delay(100);
         }
 
         public void GenericTest<T>(int x, T entity, bool enable)

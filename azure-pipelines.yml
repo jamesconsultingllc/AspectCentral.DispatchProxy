@@ -4,7 +4,8 @@
 # https://aka.ms/yaml
 variables:
   SonarKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
-  Version: '1.0.0'
+  Version: '1.0.0
+  '
   buildConfiguration: 'Release'
 trigger:
 - master
