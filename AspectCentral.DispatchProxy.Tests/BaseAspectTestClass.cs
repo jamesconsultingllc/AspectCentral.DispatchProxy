@@ -21,7 +21,7 @@ namespace AspectCentral.DispatchProxy.Tests
     /// </summary>
     /// <typeparam name="T">
     /// </typeparam>
-    public class BaseAspectTestClass<T> : BaseAspect<T>
+    public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
     {
         /// <summary>
         ///     The create.

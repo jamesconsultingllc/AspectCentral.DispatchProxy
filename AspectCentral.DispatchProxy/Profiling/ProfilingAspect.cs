@@ -20,7 +20,7 @@ namespace AspectCentral.DispatchProxy.Profiling
     /// </summary>
     /// <typeparam name="T">
     /// </typeparam>
-    public class ProfilingAspect<T> : BaseAspect<T>
+    public class ProfilingAspect<T> : BaseAspect<T> where T : class?
     {
         /// <summary>
         ///     Gets the ProfilingAspectType
@@ -31,7 +31,7 @@ namespace AspectCentral.DispatchProxy.Profiling
         /// <summary>
         ///     The stopwatch.
         /// </summary>
-        private readonly Stopwatch stopWatch = new Stopwatch();
+        private readonly Stopwatch stopWatch = new();
 
         /// <summary>
         /// The create.

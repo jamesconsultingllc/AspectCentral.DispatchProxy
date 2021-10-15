@@ -15,13 +15,13 @@ namespace AspectCentral.DispatchProxy.Tests
     /// <summary>
     ///     The my interface.
     /// </summary>
-    internal class MyTestInterface : ITestInterface
+    public class MyTestInterface : ITestInterface
     {
         public static readonly Type Type = typeof(MyTestInterface);
         /// <inheritdoc />
         public async Task<MyUnitTestClass> GetClassByIdAsync(int id)
         {
-            await Task.Delay(100).ConfigureAwait(false);
+            await Task.Delay(100);
             return new MyUnitTestClass(id, id.ToString());
         }
 

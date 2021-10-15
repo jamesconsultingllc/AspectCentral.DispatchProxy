@@ -44,6 +44,6 @@ namespace AspectCentral.DispatchProxy
         }
 
         /// <inheritdoc />
-        public abstract T Create<T>(T instance, Type implementationType);
+        public abstract T Create<T>(T instance, Type implementationType) where T : class?;
     }
 }

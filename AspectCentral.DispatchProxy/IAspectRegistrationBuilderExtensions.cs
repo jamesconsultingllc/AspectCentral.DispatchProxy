@@ -36,7 +36,7 @@ namespace AspectCentral.DispatchProxy
         /// </returns>
         /// <exception cref="ArgumentNullException">
         /// </exception>
-        public static IAspectRegistrationBuilder AddAspect<T>(this IAspectRegistrationBuilder aspectRegistrationBuilder, int? sortOrder = null, params MethodInfo[] methodsToIntercept)
+        public static IAspectRegistrationBuilder AddAspectViaFactory<T>(this IAspectRegistrationBuilder aspectRegistrationBuilder, int? sortOrder = null, params MethodInfo[] methodsToIntercept)
             where T : IAspectFactory
         {
             if (aspectRegistrationBuilder == null) throw new ArgumentNullException(nameof(aspectRegistrationBuilder));

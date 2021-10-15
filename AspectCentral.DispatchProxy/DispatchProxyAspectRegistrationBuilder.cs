@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
@@ -34,7 +35,7 @@ namespace AspectCentral.DispatchProxy
         }
 
         /// <inheritdoc />
-        public override void ValidateAddAspect(Type aspectType)
+        protected override void ValidateAddAspect(Type aspectType)
         {
             base.ValidateAddAspect(aspectType);
             
@@ -61,8 +62,9 @@ namespace AspectCentral.DispatchProxy
 
         // ReSharper disable once UnusedMember.Local
 #pragma warning disable S1144 // Unused private types or members should be removed
+        [ExcludeFromCodeCoverage]
         private static object CreateFactory<TService>(IServiceProvider serviceProvider,
-            AspectConfiguration aspectConfiguration)
+            AspectConfiguration aspectConfiguration) where TService : class?
         {
             var implementationType = aspectConfiguration.ServiceDescriptor.ImplementationType;
             var instance = default(TService);

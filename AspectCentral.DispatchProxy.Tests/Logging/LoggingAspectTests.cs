@@ -83,7 +83,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         [Fact]
         public async Task TestLoggingAsync()
         {
-            await instance.TestAsync(1, "2", null).ConfigureAwait(false);
+            await instance.TestAsync(1, "2", null);
             logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
         }
 
@@ -96,7 +96,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         [Fact]
         public async Task TestLoggingAsyncWithResult()
         {
-            await instance.GetClassByIdAsync(1).ConfigureAwait(false);
+            await instance.GetClassByIdAsync(1);
             logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(3));
         }
         

@@ -28,13 +28,13 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void AddAspectThrowsArgumentNullExceptionWhenAspectRegistrationBuilderIsNull()
         {
-            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder).AddAspect<TestAspectFactory>());
+            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder).AddAspectViaFactory<TestAspectFactory>());
         }
 
         [Fact]
         public void AddAspectCallsAddAspectWhenArgumentsAreValid()
         {
-            mockIAspectRegistrationBuilder.Object.AddAspect<TestAspectFactory>();
+            mockIAspectRegistrationBuilder.Object.AddAspectViaFactory<TestAspectFactory>();
             mockIAspectRegistrationBuilder.Verify(x => x.AddAspect(TestAspectFactory.Type, null, new MethodInfo[0]), Times.Once);
         }
 

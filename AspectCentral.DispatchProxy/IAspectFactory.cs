@@ -31,6 +31,6 @@ namespace AspectCentral.DispatchProxy
         /// <returns>
         ///     The <see cref="T" />.
         /// </returns>
-        T Create<T>(T instance, Type implementationType);
+        T Create<T>(T instance, Type implementationType) where T : class?;
     }
 }

@@ -12,7 +12,7 @@ namespace AspectCentral.DispatchProxy.Tests
     /// <summary>
     ///     The my class.
     /// </summary>
-    internal class MyUnitTestClass
+    public class MyUnitTestClass
     {
         /// <summary>
         /// Initializes a new instance of the <see cref="MyUnitTestClass"/> class.

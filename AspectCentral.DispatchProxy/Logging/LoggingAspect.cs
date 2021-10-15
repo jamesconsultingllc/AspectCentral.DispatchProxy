@@ -20,7 +20,7 @@ namespace AspectCentral.DispatchProxy.Logging
     /// </summary>
     /// <typeparam name="T">
     /// </typeparam>
-    public class LoggingAspect<T> : BaseAspect<T>
+    public class LoggingAspect<T> : BaseAspect<T> where T : class?
     {
         /// <summary>
         /// </summary>

@@ -14,7 +14,7 @@ namespace AspectCentral.DispatchProxy.Tests
     /// <summary>
     ///     The Interface interface.
     /// </summary>
-    internal interface ITestInterface
+    public interface ITestInterface
     {
         /// <summary>
         /// The get class by id.
