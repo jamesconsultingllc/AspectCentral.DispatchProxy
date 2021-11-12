@@ -3,10 +3,8 @@
 # Add steps that build, run tests, deploy, and more:
 # https://aka.ms/yaml
 variables:
-  SonarKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
-  Version: '1.0.0
-  '
-  buildConfiguration: 'Release'
+  - group: 'Code Signing'
+
 trigger:
 - master
 
@@ -19,7 +17,7 @@ steps:
     SonarCloud: 'Aspect Central'
     organization: 'james-consulting-llc'
     scannerMode: 'MSBuild'
-    projectKey: '$(SonarKey)'
+    projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
     projectVersion: '$(Version)'
 - task: DotNetCoreCLI@2
   inputs:
@@ -44,6 +42,26 @@ steps:
     versioningScheme: 'byEnvVar'
     versionEnvVar: Version
     arguments: '--configuration $(buildConfiguration)'
+- task: DotNetCoreCLI@2
+  displayName: Install NuGetKeyVaultSignTool
+  inputs:
+    command: 'custom'
+    custom: 'tool'
+    arguments: 'install --tool-path . NuGetKeyVaultSignTool'
+- task: PowerShell@2
+  displayName: Running NuGetKeyVaultSign
+  inputs:
+    targetType: 'inline'
+    script: |
+      .\NuGetKeyVaultSignTool sign ./bin/$(buildConfiguration)/*.nupkg `
+      --file-digest "sha256" `
+      --timestamp-rfc3161 "http://ts.ssl.com" `
+      --timestamp-digest "sha256" `
+      --azure-key-vault-url "https://jc-code-signing.vault.azure.net/" `
+      --azure-key-vault-tenant-id "a2bc6fb5-fba9-40b4-9ecc-2acf61cae876" `
+      --azure-key-vault-client-id "$(ApplicationId)" `
+      --azure-key-vault-client-secret "$(ClientSecret)" `
+      --azure-key-vault-certificate "jc-code-signing"    
 - task: SonarCloudAnalyze@1
 - task: SonarCloudPublish@1
   inputs:

@@ -11,11 +11,25 @@
         <ProjectGuid>5112A87D-F8F2-43A5-B566-9F104BC83954</ProjectGuid>
         <TargetFrameworks>net5.0;netstandard2.1</TargetFrameworks>
         <Nullable>enable</Nullable>
+        <Title>AspectCentral.DispatchProxy</Title>
+        <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>
+        <PackageLicenseUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/blob/master/LICENSE</PackageLicenseUrl>
+        <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
+    </PropertyGroup>
+    <PropertyGroup>
+        <VersionMajor>1</VersionMajor>
+        <VersionMinor>0</VersionMinor>
+        <VersionBuild>1</VersionBuild>
     </PropertyGroup>
 
+    <PropertyGroup>
+        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' == '' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)-local</VersionPrefix>
+        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' == 'Debug'">$(VersionMajor).$(VersionMinor).$(VersionBuild)-$(BUILD_BUILDNUMBER)-preview</VersionPrefix>
+        <VersionPrefix Condition=" '$(Configuration)' != 'Debug'">$(VersionMajor).$(VersionMinor).$(VersionBuild)</VersionPrefix>
+    </PropertyGroup>
     <ItemGroup>
-        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.1" />
-        <PackageReference Include="JamesConsulting" Version="1.0.0" />
+        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2" />
+        <PackageReference Include="JamesConsulting" Version="1.0.1" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
     </ItemGroup>
 </Project>
