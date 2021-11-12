@@ -245,9 +245,8 @@ namespace AspectCentral.DispatchProxy
     /// </returns>
     private void ProcessAction(AspectContext aspectContext)
     {
-        aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
-        var task = (Task)aspectContext.ReturnValue;
-        task.ContinueWith((_, state) => PostInvoke((AspectContext)state), aspectContext);
+        var task = (Task)aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
+        aspectContext.ReturnValue = task.ContinueWith((_, state) => PostInvoke((AspectContext)state), aspectContext);
     }
 
     /// <summary>
