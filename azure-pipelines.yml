@@ -1,0 +1,76 @@
+# Starter pipeline
+# Start with a minimal pipeline that you can customize to build and deploy your code.
+# Add steps that build, run tests, deploy, and more:
+# https://aka.ms/yaml
+variables:
+  - group: 'Code Signing'
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+steps:
+- task: SonarCloudPrepare@1
+  inputs:
+    SonarCloud: 'Aspect Central'
+    organization: 'james-consulting-llc'
+    scannerMode: 'MSBuild'
+    projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
+    projectVersion: '$(Version)'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    feedsToUse: 'select'    
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'build'
+    projects: 'AspectCentral.DispatchProxy.sln'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: test
+    projects: '**/*.Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/AspectCentral.DispatchProxy.csproj'
+    nobuild: true
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: Version
+    arguments: '--configuration $(buildConfiguration)'
+- task: DotNetCoreCLI@2
+  displayName: Install NuGetKeyVaultSignTool
+  inputs:
+    command: 'custom'
+    custom: 'tool'
+    arguments: 'install --tool-path . NuGetKeyVaultSignTool'
+- task: PowerShell@2
+  displayName: Running NuGetKeyVaultSign
+  inputs:
+    targetType: 'inline'
+    script: |
+      .\NuGetKeyVaultSignTool sign ./bin/$(buildConfiguration)/*.nupkg `
+      --file-digest "sha256" `
+      --timestamp-rfc3161 "http://ts.ssl.com" `
+      --timestamp-digest "sha256" `
+      --azure-key-vault-url "https://jc-code-signing.vault.azure.net/" `
+      --azure-key-vault-tenant-id "a2bc6fb5-fba9-40b4-9ecc-2acf61cae876" `
+      --azure-key-vault-client-id "$(ApplicationId)" `
+      --azure-key-vault-client-secret "$(ClientSecret)" `
+      --azure-key-vault-certificate "jc-code-signing"    
+- task: SonarCloudAnalyze@1
+- task: SonarCloudPublish@1
+  inputs:
+    pollingTimeoutSec: '300'
+- task: CopyFiles@2
+  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
+  inputs:
+    Contents: '**\bin\$(buildConfiguration)\*.nupkg'
+    TargetFolder: '$(build.artifactstagingdirectory)'
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+
