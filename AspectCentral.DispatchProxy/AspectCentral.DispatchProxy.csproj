@@ -13,7 +13,6 @@
         <Nullable>enable</Nullable>
         <Title>AspectCentral.DispatchProxy</Title>
         <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>
-        <PackageLicenseUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/blob/master/LICENSE</PackageLicenseUrl>
         <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
     </PropertyGroup>
     <PropertyGroup>
