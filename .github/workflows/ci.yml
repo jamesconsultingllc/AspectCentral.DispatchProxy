@@ -219,7 +219,7 @@ jobs:
       - name: Push to nuget.org
         shell: bash
         run: |
-          dotnet nuget push "./artifacts/*.nupkg" \
+          dotnet nuget push ./artifacts/*.nupkg \
             --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
@@ -338,7 +338,7 @@ jobs:
       - name: Push to nuget.org
         shell: bash
         run: |
-          dotnet nuget push "./artifacts/*.nupkg" \
+          dotnet nuget push ./artifacts/*.nupkg \
             --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
             --source https://api.nuget.org/v3/index.json \
             --skip-duplicate
