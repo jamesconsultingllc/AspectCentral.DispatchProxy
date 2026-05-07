@@ -41,9 +41,11 @@ steps:
     projects: '**/*.Tests/*.csproj'
     arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
 - task: DotNetCoreCLI@2
+  displayName: 'dotnet pack'
   inputs:
     command: 'pack'
     packagesToPack: '**/AspectCentral.DispatchProxy.csproj'
+    packDirectory: '$(Build.ArtifactStagingDirectory)/packages'
     nobuild: true
     versioningScheme: 'byEnvVar'
     versionEnvVar: Version
@@ -55,7 +57,7 @@ steps:
     Endpoint: 'https://wcus.codesigning.azure.net/'
     ArtifactSigningAccountName: 'jc-ts-account'
     CertificateProfileName: 'Code-Signing'
-    FilesFolder: '$(Build.SourcesDirectory)'
+    FilesFolder: '$(Build.ArtifactStagingDirectory)/packages'
     FilesFolderFilter: 'nupkg'
     FilesFolderRecurse: true
     FileDigest: 'SHA256'
@@ -65,11 +67,9 @@ steps:
 - task: SonarCloudPublish@3
   inputs:
     pollingTimeoutSec: '300'
-- task: CopyFiles@2
-  displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
-  inputs:
-    Contents: '**\bin\$(buildConfiguration)\*.nupkg'
-    TargetFolder: '$(build.artifactstagingdirectory)'
 - task: PublishBuildArtifacts@1
   displayName: 'Publish Artifact: drop'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/packages'
+    ArtifactName: 'drop'
 
