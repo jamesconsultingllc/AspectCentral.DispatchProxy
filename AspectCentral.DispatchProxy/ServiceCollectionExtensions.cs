@@ -9,6 +9,7 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
@@ -226,6 +227,7 @@ namespace AspectCentral.DispatchProxy;
         ///     <see cref="System.Reflection.Assembly.GetTypes"/> with a <see cref="ReflectionTypeLoadException"/>
         ///     contribute whatever non-null types the runtime managed to load.
         /// </summary>
+        [ExcludeFromCodeCoverage(Justification = "ReflectionTypeLoadException catch is defensive infrastructure for malformed plug-in assemblies; not reliably triggerable in unit tests.")]
         private static IServiceCollection RegisterAspectFactories(this IServiceCollection serviceCollection,
             System.Reflection.Assembly[] assembliesToScan)
         {
