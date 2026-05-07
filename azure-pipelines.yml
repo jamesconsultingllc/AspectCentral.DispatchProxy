@@ -10,13 +10,18 @@ pool:
   vmImage: 'windows-latest'
 
 steps:
-- task: SonarCloudPrepare@1
-  inputs:
-    SonarCloud: 'Aspect Central'
-    organization: 'james-consulting-llc'
-    scannerMode: 'MSBuild'
-    projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
-    projectVersion: '$(Version)'
+# SonarCloud analysis is temporarily disabled — the SonarCloud service connection
+# token expired (401 from sonarcloud.io). Re-enable after rotating the token in
+# both SonarCloud (Account → Security) and the ADO 'Aspect Central' service
+# connection. Tasks were also bumped from @1 (deprecated) to @3 — keep @3 when
+# uncommenting.
+# - task: SonarCloudPrepare@3
+#   inputs:
+#     SonarQube: 'Aspect Central'
+#     organization: 'james-consulting-llc'
+#     scannerMode: 'dotnet'
+#     projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
+#     projectVersion: '$(Version)'
 - task: DotNetCoreCLI@2
   inputs:
     command: 'restore'
@@ -56,10 +61,10 @@ steps:
     FileDigest: 'SHA256'
     TimestampRfc3161: 'http://timestamp.acs.microsoft.com'
     TimestampDigest: 'SHA256'
-- task: SonarCloudAnalyze@1
-- task: SonarCloudPublish@1
-  inputs:
-    pollingTimeoutSec: '300'
+# - task: SonarCloudAnalyze@3
+# - task: SonarCloudPublish@3
+#   inputs:
+#     pollingTimeoutSec: '300'
 - task: CopyFiles@2
   displayName: 'Copy Files to: $(build.artifactstagingdirectory)'
   inputs:
