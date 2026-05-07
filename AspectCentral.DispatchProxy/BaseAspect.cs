@@ -54,7 +54,7 @@ internal static class BaseAspectAsyncProcessor
     {
         try
         {
-            var result = await task;
+            var result = await task.ConfigureAwait(false);
             aspectContext.ReturnValue = result;
             return result;
         }
@@ -477,7 +477,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
         var task = (Task)aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues)!;
         try
         {
-            await task;
+            await task.ConfigureAwait(false);
         }
         finally
         {

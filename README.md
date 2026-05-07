@@ -76,9 +76,9 @@ dotnet add package AspectCentral.DispatchProxy
 > **Note:** v2.0.0 (the modernization release that introduced `net9.0` / `net10.0` support, the
 > async short-circuit fix, and the keyed-DI guards) has not yet been published to nuget.org.
 > Until the first stable v2 release ships, consume the library by either (a) building it from
-> source against the `develop` branch, or (b) referencing the CI-produced `*.nupkg` artifact from
-> the GitHub Actions run on this PR. The `dotnet add package` command above will continue to
-> resolve to v1.x for now.
+> source against the `develop` branch, or (b) referencing the `*.nupkg` artifact published by the
+> Azure Pipelines build (`azure-pipelines.yml`) — it is signed and uploaded as a build artifact on
+> every CI run. The `dotnet add package` command above will continue to resolve to v1.x for now.
 
 This package depends on the `AspectCentral.Abstractions` package, which contributes
 `IAspectRegistrationBuilder`, `AspectConfiguration`, `AspectContext`, `MethodTypeOptions`, and
@@ -358,12 +358,13 @@ The pipeline runs in three phases:
 `services.AddAspectSupport()` does the following:
 
 1. Calls `GetOrAddInMemoryProvider`, which:
-    - Returns the existing `InMemoryAspectConfigurationProvider` if one was previously registered as
-      an `ImplementationInstance` singleton.
+    - Returns any existing non-keyed `IAspectConfigurationProvider` that was previously registered
+      as an `ImplementationInstance` singleton — the returned instance is whatever concrete type
+      was registered (not necessarily `InMemoryAspectConfigurationProvider`).
     - Throws `InvalidOperationException` if an `IAspectConfigurationProvider` is already registered
       via type or factory (the existing instance cannot be observed up-front, so silent reuse would
       risk a provider mismatch at runtime).
-    - Otherwise registers a new instance via
+    - Otherwise instantiates a new `InMemoryAspectConfigurationProvider` and registers it via
       `AddSingleton<IAspectConfigurationProvider>(provider)`.
 2. Scans every loaded assembly via `AppDomain.CurrentDomain.GetAssemblies()` and finds every
    concrete `IAspectFactory`. Each is `TryAddSingleton`-registered against itself.

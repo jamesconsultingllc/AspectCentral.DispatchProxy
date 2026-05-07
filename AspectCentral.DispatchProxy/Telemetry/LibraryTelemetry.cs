@@ -15,7 +15,7 @@ public static class LibraryActivitySources
     public const string Aspects = "AspectCentral.DispatchProxy.Aspects";
 
     /// <summary>All sources — for easy bulk registration by consumers.</summary>
-    public static readonly IReadOnlyList<string> All = [Aspects];
+    public static readonly IReadOnlyList<string> All = Array.AsReadOnly(new[] { Aspects });
 
     /// <summary>The shared ActivitySource instance.</summary>
     internal static readonly ActivitySource ActivitySource = new(Aspects);
@@ -30,7 +30,7 @@ public static class LibraryMeters
     public const string Aspects = "AspectCentral.DispatchProxy.Aspects";
 
     /// <summary>All meters — for easy bulk registration by consumers.</summary>
-    public static readonly IReadOnlyList<string> All = [Aspects];
+    public static readonly IReadOnlyList<string> All = Array.AsReadOnly(new[] { Aspects });
 
     /// <summary>The shared Meter instance.</summary>
     internal static readonly Meter Meter = new(Aspects);
