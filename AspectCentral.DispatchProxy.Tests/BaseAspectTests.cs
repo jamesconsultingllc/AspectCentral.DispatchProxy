@@ -68,14 +68,18 @@ public class BaseAspectTests
     [Fact]
     public async Task TestCreatingTaskResultWhenMethodNotInvoked()
     {
-        // PreInvoke synthesizes a Task result and sets InvokeMethod=false, so the real method is never called.
-        // Async + InvokeMethod=false: PreInvoke runs (1 log "Setting result"); the supplied Task short-circuit
-        // continuation now also runs PostInvoke (1 log "Should not be invoked") — matching the synchronous
-        // short-circuit contract. Total: 2 log calls.
+        // PreInvoke synthesizes a Task<MyUnitTestClass> result and sets InvokeMethod=false, so the
+        // real method is never called. Async + InvokeMethod=false: PreInvoke runs (1 log "Setting
+        // result"); the supplied Task<TResult> short-circuit continuation unwraps the awaited
+        // value into AspectContext.ReturnValue (matching the normal Task<TResult> path) and runs
+        // PostInvoke (1 log "Should not be invoked"). Total: 2 log calls.
+        BaseAspectTestClass<ITestInterface>.LastObservedReturnValueType = null;
         var result = await _instance.GetClassByIdAsync(12);
         _logger.Verify(
             x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
                 It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         Assert.Equal(new MyUnitTestClass(12, "testing 123"), result);
+        // Verify PostInvoke saw the unwrapped TResult (not the Task<TResult> wrapper).
+        Assert.Equal(typeof(MyUnitTestClass), BaseAspectTestClass<ITestInterface>.LastObservedReturnValueType);
     }
 }

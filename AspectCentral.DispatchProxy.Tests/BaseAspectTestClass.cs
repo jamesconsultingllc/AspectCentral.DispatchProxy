@@ -54,6 +54,14 @@ public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
     }
 
     /// <summary>
+    /// Captures the runtime type of <see cref="AspectContext.ReturnValue" /> observed by the most
+    /// recent <see cref="PostInvoke" /> call. Tests use this to verify that async short-circuit
+    /// invocations unwrap <see cref="Task{TResult}" /> into the awaited result before PostInvoke
+    /// runs, matching the non-short-circuited path.
+    /// </summary>
+    public static Type? LastObservedReturnValueType { get; set; }
+
+    /// <summary>
     /// Logs when post-invocation logic unexpectedly runs for this short-circuiting test aspect.
     /// </summary>
     /// <param name="aspectContext">
@@ -61,6 +69,7 @@ public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
     /// </param>
     public override void PostInvoke(AspectContext aspectContext)
     {
+        LastObservedReturnValueType = aspectContext.ReturnValue?.GetType();
         Logger.LogInformation("Should not be invoked");
     }
 

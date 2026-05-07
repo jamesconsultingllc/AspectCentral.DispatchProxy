@@ -73,6 +73,13 @@ That gives you:
 dotnet add package AspectCentral.DispatchProxy
 ```
 
+> **Note:** v2.0.0 (the modernization release that introduced `net9.0` / `net10.0` support, the
+> async short-circuit fix, and the keyed-DI guards) has not yet been published to nuget.org.
+> Until the first stable v2 release ships, consume the library by either (a) building it from
+> source against the `develop` branch, or (b) referencing the CI-produced `*.nupkg` artifact from
+> the GitHub Actions run on this PR. The `dotnet add package` command above will continue to
+> resolve to v1.x for now.
+
 This package depends on the `AspectCentral.Abstractions` package, which contributes
 `IAspectRegistrationBuilder`, `AspectConfiguration`, `AspectContext`, `MethodTypeOptions`, and
 related primitives. It is pulled in transitively — you do not need to install it explicitly.

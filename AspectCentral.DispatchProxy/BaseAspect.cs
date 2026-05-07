@@ -249,14 +249,27 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                 else if (isAsync && aspectContext.ReturnValue is Task shortCircuitTask)
                 {
                     // Async short-circuit: the aspect supplied a Task return value without invoking
-                    // the target. Attach PostInvoke to the supplied task so cleanup still runs,
-                    // matching the synchronous short-circuit contract below.
-                    var ctx = aspectContext;
-                    shortCircuitTask.ContinueWith(
-                        _ => PostInvoke(ctx),
-                        CancellationToken.None,
-                        TaskContinuationOptions.ExecuteSynchronously,
-                        TaskScheduler.Default);
+                    // the target. Wire PostInvoke through the same async machinery as the normal
+                    // intercepted path so PostInvoke observes the unwrapped TResult (not the
+                    // Task<TResult> wrapper) and so cleanup reliably runs in the task's continuation.
+                    var taskType = shortCircuitTask.GetType();
+                    if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
+                    {
+                        var resultType = taskType.GetGenericArguments()[0];
+                        var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
+                        aspectContext.ReturnValue = mi.Invoke(
+                            null, [shortCircuitTask, aspectContext, (Action<AspectContext>)PostInvoke]);
+                    }
+                    else
+                    {
+                        // Non-generic Task — no result to unwrap; just attach PostInvoke.
+                        var ctx = aspectContext;
+                        shortCircuitTask.ContinueWith(
+                            _ => PostInvoke(ctx),
+                            CancellationToken.None,
+                            TaskContinuationOptions.ExecuteSynchronously,
+                            TaskScheduler.Default);
+                    }
                 }
                 else
                 {
