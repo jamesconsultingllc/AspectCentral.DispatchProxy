@@ -155,6 +155,41 @@ namespace AspectCentral.DispatchProxy.Tests
             act.Should().NotThrow();
             serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
         }
+
+        [Fact]
+        public void ConfigureAspectsThrowsWhenConcreteTypeAlreadyRegisteredWithDifferentLifetime()
+        {
+            // Pre-register the impl as Singleton, then register the interface as Transient with an
+            // aspect configured. The proxy factory needs the impl, so DI semantics demand the impl be
+            // registered with the same lifetime as the interface — otherwise the proxy resolves a
+            // concrete instance with the wrong lifetime.
+            aspectConfigurationProviderMock
+                .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+                .Returns(new AspectConfiguration(ServiceDescriptor.Describe(
+                    typeof(ITestInterface), typeof(MyTestInterface), ServiceLifetime.Transient)));
+            serviceCollection.AddSingleton<MyTestInterface>();
+            serviceCollection.AddTransient<ITestInterface, MyTestInterface>();
+
+            Action act = () => serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            act.Should().Throw<InvalidOperationException>()
+               .WithMessage("*already registered with lifetime Singleton*Transient*");
+        }
+
+        [Fact]
+        public void ConfigureAspectsAcceptsExistingConcreteRegistrationWithMatchingLifetime()
+        {
+            aspectConfigurationProviderMock
+                .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+                .Returns(new AspectConfiguration(ServiceDescriptor.Describe(
+                    typeof(ITestInterface), typeof(MyTestInterface), ServiceLifetime.Transient)));
+            serviceCollection.AddTransient<MyTestInterface>();
+            serviceCollection.AddTransient<ITestInterface, MyTestInterface>();
+
+            Action act = () => serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            act.Should().NotThrow();
+        }
     }
 
     internal interface IGenericService<T>
