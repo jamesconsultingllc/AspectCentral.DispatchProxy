@@ -350,7 +350,14 @@ The pipeline runs in three phases:
 
 `services.AddAspectSupport()` does the following:
 
-1. `TryAddSingleton<IAspectConfigurationProvider>(new InMemoryAspectConfigurationProvider())`.
+1. Calls `GetOrAddInMemoryProvider`, which:
+   - Returns the existing `InMemoryAspectConfigurationProvider` if one was previously registered as
+     an `ImplementationInstance` singleton.
+   - Throws `InvalidOperationException` if an `IAspectConfigurationProvider` is already registered
+     via type or factory (the existing instance cannot be observed up-front, so silent reuse would
+     risk a provider mismatch at runtime).
+   - Otherwise registers a new instance via
+     `AddSingleton<IAspectConfigurationProvider>(provider)`.
 2. Scans every loaded assembly via `AppDomain.CurrentDomain.GetAssemblies()` and finds every
    concrete `IAspectFactory`. Each is `TryAddSingleton`-registered against itself.
 3. Returns a `DispatchProxyAspectRegistrationBuilder` for fluent chaining.

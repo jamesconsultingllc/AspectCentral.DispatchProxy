@@ -28,9 +28,9 @@ public static class ServiceCollectionExtensions
     ///     Cached <see cref="MethodInfo"/> for the private generic <c>CreateFactory&lt;TService&gt;</c>
     ///     used to construct the aspect chain at service-resolution time.
     /// </summary>
-private static readonly MethodInfo CreateFactoryMethodInfo =
-    typeof(ServiceCollectionExtensions).GetMethod("CreateFactory",
-        BindingFlags.Static | BindingFlags.NonPublic)!;
+    private static readonly MethodInfo CreateFactoryMethodInfo =
+        typeof(ServiceCollectionExtensions).GetMethod("CreateFactory",
+            BindingFlags.Static | BindingFlags.NonPublic)!;
 
     /// <summary>
     ///     Enables aspect-oriented programming on the supplied <see cref="IServiceCollection"/> using
@@ -114,115 +114,115 @@ private static readonly MethodInfo CreateFactoryMethodInfo =
     ///     time (for example, deserialized from configuration). For the fluent registration flow,
     ///     prefer <see cref="AddAspectSupport(IServiceCollection)"/>.
     /// </remarks>
-public static IServiceCollection AddAspectSupport(this IServiceCollection serviceCollection,
-    IAspectConfigurationProvider aspectConfigurationProvider)
-{
-    if (serviceCollection == null) throw new ArgumentNullException(nameof(serviceCollection));
-    if (aspectConfigurationProvider == null) throw new ArgumentNullException(nameof(aspectConfigurationProvider));
-
-    // Detect provider-mismatch: if a different IAspectConfigurationProvider instance is already
-    // registered, ConfigureAspects would rewrite descriptors using the supplied instance while DI
-    // hands aspect factories the pre-existing one at runtime, leading to silently incorrect interception.
-    var existing = serviceCollection.FirstOrDefault(d =>
-        d.ServiceType == typeof(IAspectConfigurationProvider));
-    if (existing is not null)
+    public static IServiceCollection AddAspectSupport(this IServiceCollection serviceCollection,
+        IAspectConfigurationProvider aspectConfigurationProvider)
     {
-        if (!ReferenceEquals(existing.ImplementationInstance, aspectConfigurationProvider))
+        if (serviceCollection == null) throw new ArgumentNullException(nameof(serviceCollection));
+        if (aspectConfigurationProvider == null) throw new ArgumentNullException(nameof(aspectConfigurationProvider));
+
+        // Detect provider-mismatch: if a different IAspectConfigurationProvider instance is already
+        // registered, ConfigureAspects would rewrite descriptors using the supplied instance while DI
+        // hands aspect factories the pre-existing one at runtime, leading to silently incorrect interception.
+        var existing = serviceCollection.FirstOrDefault(d =>
+            d.ServiceType == typeof(IAspectConfigurationProvider));
+        if (existing is not null)
         {
-            throw new InvalidOperationException(
-                "An IAspectConfigurationProvider is already registered in the service collection " +
-                "with a different instance than the one supplied to AddAspectSupport. Remove the " +
-                "prior registration or call the parameterless AddAspectSupport(IServiceCollection) " +
-                "fluent overload instead.");
+            if (!ReferenceEquals(existing.ImplementationInstance, aspectConfigurationProvider))
+            {
+                throw new InvalidOperationException(
+                    "An IAspectConfigurationProvider is already registered in the service collection " +
+                    "with a different instance than the one supplied to AddAspectSupport. Remove the " +
+                    "prior registration or call the parameterless AddAspectSupport(IServiceCollection) " +
+                    "fluent overload instead.");
+            }
         }
-    }
-    else
-    {
-        serviceCollection.AddSingleton(aspectConfigurationProvider);
-    }
-
-    return serviceCollection.RegisterAspectFactories().ConfigureAspects(aspectConfigurationProvider);
-}
-
-/// <summary>
-///     Rewrites interface→implementation descriptors in the service collection so that resolving the
-///     interface yields a <see cref="System.Reflection.DispatchProxy" /> wrapping the concrete
-///     implementation with the configured aspects.
-/// </summary>
-/// <param name="serviceCollection">The service collection to scan and rewrite.</param>
-/// <param name="aspectConfigurationProvider">Provider supplying aspect configurations per type pair.</param>
-/// <returns>The same <paramref name="serviceCollection"/> for chaining.</returns>
-/// <remarks>
-///     <para>
-///         Only descriptors that satisfy ALL of the following are considered:
-///         <list type="bullet">
-///             <item><description><c>ServiceType</c> is an interface and is closed (no open generic parameters).</description></item>
-///             <item><description>Descriptor is non-keyed.</description></item>
-///             <item><description><c>ImplementationType</c> is non-null (i.e. not an instance or factory descriptor).</description></item>
-///         </list>
-///     </para>
-///     <para>
-///         Open generics, keyed services, <c>ImplementationInstance</c> registrations, and
-///         <c>ImplementationFactory</c> registrations are intentionally left untouched in this rewrite
-///         path because proxying them safely requires preserving DI ownership/disposal semantics that
-///         a static descriptor swap cannot guarantee. Consumers needing aspects on those registration
-///         shapes should use the fluent builder
-///         (<see cref="AddAspectSupport(IServiceCollection)"/> + <c>AddAspectViaFactory</c>), whose
-///         <see cref="DispatchProxyAspectRegistrationBuilder"/> handles factory descriptors explicitly.
-///     </para>
-///     <para>
-///         The loop captures the original descriptor count before iterating so that descriptors
-///         appended during rewrite (the concrete implementation type registration) are not themselves
-///         re-evaluated.
-///     </para>
-/// </remarks>
-private static IServiceCollection ConfigureAspects(this IServiceCollection serviceCollection,
-    IAspectConfigurationProvider aspectConfigurationProvider)
-{
-    var originalCount = serviceCollection.Count;
-    for (var index = 0; index < originalCount; index++)
-    {
-        var service = serviceCollection[index];
-
-        if (!service.ServiceType.IsInterface) continue;
-        if (service.ServiceType.ContainsGenericParameters) continue;
-        if (service.IsKeyedService) continue;
-        if (service.ImplementationType is null) continue;
-
-        var aspectConfiguration =
-            aspectConfigurationProvider.GetTypeAspectConfiguration(service.ServiceType,
-                service.ImplementationType);
-
-        if (aspectConfiguration is null) continue;
-
-        // The proxy factory below resolves the concrete implementation through DI, so the
-        // implementation type must be registered. If a registration with a *different* lifetime
-        // already exists, TryAdd would silently leave it in place and the proxied interface
-        // would resolve a concrete instance with the wrong lifetime (e.g. interface declared
-        // Transient but a pre-existing Singleton registration of the impl wins). Detect this
-        // and throw with clear remediation rather than corrupt DI semantics.
-        var implType = service.ImplementationType;
-        var existingConcrete = serviceCollection.FirstOrDefault(d =>
-            d.ServiceType == implType && !d.IsKeyedService);
-        if (existingConcrete is null)
+        else
         {
-            serviceCollection.Add(ServiceDescriptor.Describe(implType, implType, service.Lifetime));
-        }
-        else if (existingConcrete.Lifetime != service.Lifetime)
-        {
-            throw new InvalidOperationException(
-                $"Cannot enable aspects on {service.ServiceType.FullName} -> {implType.FullName}: " +
-                $"the implementation type is already registered with lifetime " +
-                $"{existingConcrete.Lifetime} but the interface descriptor uses {service.Lifetime}. " +
-                $"Remove the conflicting registration or align the lifetimes before calling AddAspectSupport.");
+            serviceCollection.AddSingleton(aspectConfigurationProvider);
         }
 
-        serviceCollection[index] = new ServiceDescriptor(service.ServiceType,
-            serviceProvider => InvokeCreateFactory(serviceProvider, aspectConfiguration), service.Lifetime);
+        return serviceCollection.RegisterAspectFactories().ConfigureAspects(aspectConfigurationProvider);
     }
 
-    return serviceCollection;
-}
+    /// <summary>
+    ///     Rewrites interface→implementation descriptors in the service collection so that resolving the
+    ///     interface yields a <see cref="System.Reflection.DispatchProxy" /> wrapping the concrete
+    ///     implementation with the configured aspects.
+    /// </summary>
+    /// <param name="serviceCollection">The service collection to scan and rewrite.</param>
+    /// <param name="aspectConfigurationProvider">Provider supplying aspect configurations per type pair.</param>
+    /// <returns>The same <paramref name="serviceCollection"/> for chaining.</returns>
+    /// <remarks>
+    ///     <para>
+    ///         Only descriptors that satisfy ALL of the following are considered:
+    ///         <list type="bullet">
+    ///             <item><description><c>ServiceType</c> is an interface and is closed (no open generic parameters).</description></item>
+    ///             <item><description>Descriptor is non-keyed.</description></item>
+    ///             <item><description><c>ImplementationType</c> is non-null (i.e. not an instance or factory descriptor).</description></item>
+    ///         </list>
+    ///     </para>
+    ///     <para>
+    ///         Open generics, keyed services, <c>ImplementationInstance</c> registrations, and
+    ///         <c>ImplementationFactory</c> registrations are intentionally left untouched in this rewrite
+    ///         path because proxying them safely requires preserving DI ownership/disposal semantics that
+    ///         a static descriptor swap cannot guarantee. Consumers needing aspects on those registration
+    ///         shapes should use the fluent builder
+    ///         (<see cref="AddAspectSupport(IServiceCollection)"/> + <c>AddAspectViaFactory</c>), whose
+    ///         <see cref="DispatchProxyAspectRegistrationBuilder"/> handles factory descriptors explicitly.
+    ///     </para>
+    ///     <para>
+    ///         The loop captures the original descriptor count before iterating so that descriptors
+    ///         appended during rewrite (the concrete implementation type registration) are not themselves
+    ///         re-evaluated.
+    ///     </para>
+    /// </remarks>
+    private static IServiceCollection ConfigureAspects(this IServiceCollection serviceCollection,
+        IAspectConfigurationProvider aspectConfigurationProvider)
+    {
+        var originalCount = serviceCollection.Count;
+        for (var index = 0; index < originalCount; index++)
+        {
+            var service = serviceCollection[index];
+
+            if (!service.ServiceType.IsInterface) continue;
+            if (service.ServiceType.ContainsGenericParameters) continue;
+            if (service.IsKeyedService) continue;
+            if (service.ImplementationType is null) continue;
+
+            var aspectConfiguration =
+                aspectConfigurationProvider.GetTypeAspectConfiguration(service.ServiceType,
+                    service.ImplementationType);
+
+            if (aspectConfiguration is null) continue;
+
+            // The proxy factory below resolves the concrete implementation through DI, so the
+            // implementation type must be registered. If a registration with a *different* lifetime
+            // already exists, TryAdd would silently leave it in place and the proxied interface
+            // would resolve a concrete instance with the wrong lifetime (e.g. interface declared
+            // Transient but a pre-existing Singleton registration of the impl wins). Detect this
+            // and throw with clear remediation rather than corrupt DI semantics.
+            var implType = service.ImplementationType;
+            var existingConcrete = serviceCollection.FirstOrDefault(d =>
+                d.ServiceType == implType && !d.IsKeyedService);
+            if (existingConcrete is null)
+            {
+                serviceCollection.Add(ServiceDescriptor.Describe(implType, implType, service.Lifetime));
+            }
+            else if (existingConcrete.Lifetime != service.Lifetime)
+            {
+                throw new InvalidOperationException(
+                    $"Cannot enable aspects on {service.ServiceType.FullName} -> {implType.FullName}: " +
+                    $"the implementation type is already registered with lifetime " +
+                    $"{existingConcrete.Lifetime} but the interface descriptor uses {service.Lifetime}. " +
+                    $"Remove the conflicting registration or align the lifetimes before calling AddAspectSupport.");
+            }
+
+            serviceCollection[index] = new ServiceDescriptor(service.ServiceType,
+                serviceProvider => InvokeCreateFactory(serviceProvider, aspectConfiguration), service.Lifetime);
+        }
+
+        return serviceCollection;
+    }
 
     /// <summary>
     ///     The create factory.
@@ -241,26 +241,26 @@ private static IServiceCollection ConfigureAspects(this IServiceCollection servi
 
     // ReSharper disable once UnusedMember.Local
 #pragma warning disable S1144 // Unused private types or members should be removed
-private static object CreateFactory<TService>(IServiceProvider serviceProvider,
-    AspectConfiguration aspectConfiguration) where TService : class
-{
-    Func<IServiceProvider, TService> factory = f =>
-        (TService) f.GetRequiredService(aspectConfiguration.ServiceDescriptor.ImplementationType!);
-
-    foreach (var aspect in aspectConfiguration.GetAspects())
+    private static object CreateFactory<TService>(IServiceProvider serviceProvider,
+        AspectConfiguration aspectConfiguration) where TService : class
     {
-        var temp = factory;
-        var aspectType = aspect.AspectType;
-        factory = f =>
-        {
-            var interceptorFactory = (IAspectFactory) f.GetRequiredService(aspectType);
-            return interceptorFactory.Create(temp(f),
-                aspectConfiguration.ServiceDescriptor.ImplementationType!);
-        };
-    }
+        Func<IServiceProvider, TService> factory = f =>
+            (TService)f.GetRequiredService(aspectConfiguration.ServiceDescriptor.ImplementationType!);
 
-    return factory(serviceProvider);
-}
+        foreach (var aspect in aspectConfiguration.GetAspects())
+        {
+            var temp = factory;
+            var aspectType = aspect.AspectType;
+            factory = f =>
+            {
+                var interceptorFactory = (IAspectFactory)f.GetRequiredService(aspectType);
+                return interceptorFactory.Create(temp(f),
+                    aspectConfiguration.ServiceDescriptor.ImplementationType!);
+            };
+        }
+
+        return factory(serviceProvider);
+    }
 
 #pragma warning restore S1144 // Unused private types or members should be removed
 
@@ -276,12 +276,12 @@ private static object CreateFactory<TService>(IServiceProvider serviceProvider,
     /// <returns>
     ///     The <see cref="object" />.
     /// </returns>
-private static object InvokeCreateFactory(IServiceProvider serviceProvider,
-    AspectConfiguration aspectConfiguration)
-{
-    var mi = CreateFactoryMethodInfo.MakeGenericMethod(aspectConfiguration.ServiceDescriptor.ServiceType);
-    return mi.Invoke(null, [serviceProvider, aspectConfiguration])!;
-}
+    private static object InvokeCreateFactory(IServiceProvider serviceProvider,
+        AspectConfiguration aspectConfiguration)
+    {
+        var mi = CreateFactoryMethodInfo.MakeGenericMethod(aspectConfiguration.ServiceDescriptor.ServiceType);
+        return mi.Invoke(null, [serviceProvider, aspectConfiguration])!;
+    }
 
     /// <summary>
     ///     Scans the assemblies currently loaded in <see cref="AppDomain.CurrentDomain"/> for

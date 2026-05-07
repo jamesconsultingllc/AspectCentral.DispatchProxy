@@ -81,7 +81,7 @@ public class ProfilingAspect<T> : BaseAspect<T> where T : class?
         if (sw == null) return;
         sw.Stop();
         var ts = sw.Elapsed;
-        AspectLogs.ProfilingAspectEnd(Logger, ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds / 10);
+        AspectLogs.ProfilingAspectEnd(Logger, ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
     }
 
     /// <summary>

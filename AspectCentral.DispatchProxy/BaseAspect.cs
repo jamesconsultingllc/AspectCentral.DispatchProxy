@@ -79,26 +79,73 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
+    ///     Cache of interface→implementation method mappings keyed by (implementation type, interface
+    ///     type). Built from <see cref="Type.GetInterfaceMap"/> so it correctly handles both public and
+    ///     explicit interface implementations.
+    /// </summary>
+    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type Impl, Type Iface), Dictionary<MethodInfo, MethodInfo>>
+        InterfaceMethodMaps = new();
+
+    private static Dictionary<MethodInfo, MethodInfo> GetMethodMap(Type implType, Type interfaceType)
+    {
+        return InterfaceMethodMaps.GetOrAdd((implType, interfaceType), key =>
+        {
+            var map = key.Impl.GetInterfaceMap(key.Iface);
+            var dict = new Dictionary<MethodInfo, MethodInfo>(map.InterfaceMethods.Length);
+            for (var i = 0; i < map.InterfaceMethods.Length; i++)
+            {
+                dict[map.InterfaceMethods[i]] = map.TargetMethods[i];
+            }
+            return dict;
+        });
+    }
+
+    /// <summary>
     ///     Resolves the concrete implementation method and generates a descriptive invocation string.
     /// </summary>
     /// <param name="targetMethod">The interface method being invoked.</param>
     /// <param name="args">The method arguments.</param>
     /// <param name="implementationMethod">Output parameter containing the resolved <see cref="MethodInfo"/> on the implementation type.</param>
     /// <returns>A string representation of the method call with its arguments.</returns>
+    /// <remarks>
+    ///     Uses <see cref="Type.GetInterfaceMap"/> rather than <see cref="Type.GetMethods()"/> so that
+    ///     explicit interface implementations (which are non-public and excluded from
+    ///     <c>GetMethods()</c>) resolve correctly, and so overload resolution does not depend on
+    ///     <c>MethodInfo.ToString()</c> string equality.
+    /// </remarks>
     public virtual string GenerateMethodNameWithArguments(MethodInfo targetMethod, object[] args,
         out MethodInfo implementationMethod)
     {
-        if (!JamesConsulting.Constants.TypeMethods.ContainsKey(ObjectType))
+        var interfaceType = targetMethod.DeclaringType
+            ?? throw new InvalidOperationException(
+                $"Cannot resolve implementation method for {targetMethod.Name}: targetMethod has no DeclaringType.");
+
+        // DispatchProxy may invoke a closed generic method; map the open generic definition through
+        // GetInterfaceMap (which only knows about generic-method-definitions), then re-bind the
+        // generic arguments to the closed implementation method.
+        var lookupKey = targetMethod.IsGenericMethod
+            ? targetMethod.GetGenericMethodDefinition()
+            : targetMethod;
+
+        var methodMap = GetMethodMap(ObjectType, interfaceType);
+        if (!methodMap.TryGetValue(lookupKey, out var resolved))
         {
-            AspectLogs.AddedMethodsToCache(Logger, ObjectType.FullName ?? ObjectType.Name);
-            JamesConsulting.Constants.TypeMethods[ObjectType] = ObjectType.GetMethods();
+            // Fall back to the legacy ToString-based lookup against the public methods cache for any
+            // edge case GetInterfaceMap does not cover (e.g. proxied class with no explicit interface).
+            if (!JamesConsulting.Constants.TypeMethods.ContainsKey(ObjectType))
+            {
+                AspectLogs.AddedMethodsToCache(Logger, ObjectType.FullName ?? ObjectType.Name);
+                JamesConsulting.Constants.TypeMethods[ObjectType] = ObjectType.GetMethods();
+            }
+            var methodName = lookupKey.ToString();
+            resolved = JamesConsulting.Constants.TypeMethods[ObjectType]
+                .Single(x => x.ToString() == methodName);
         }
 
-        var methodName = targetMethod.IsGenericMethod
-            ? targetMethod.GetGenericMethodDefinition().ToString()
-            : targetMethod.ToString();
-        implementationMethod =
-            JamesConsulting.Constants.TypeMethods[ObjectType].Single(x => x.ToString() == methodName);
+        implementationMethod = targetMethod.IsGenericMethod
+            ? resolved.MakeGenericMethod(targetMethod.GetGenericArguments())
+            : resolved;
+
         return implementationMethod.ToInvocationString(args);
     }
 

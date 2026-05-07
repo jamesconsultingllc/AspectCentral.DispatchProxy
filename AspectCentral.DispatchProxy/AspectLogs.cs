@@ -31,6 +31,6 @@ internal static partial class AspectLogs
     [LoggerMessage(EventId = 3001, Level = LogLevel.Information, Message = "Starting Stopwatch")]
     public static partial void ProfilingAspectStart(ILogger logger);
 
-    [LoggerMessage(EventId = 3002, Level = LogLevel.Information, Message = "Runtime {Hours:00}:{Minutes:00}:{Seconds:00}.{Milliseconds:00}")]
+    [LoggerMessage(EventId = 3002, Level = LogLevel.Information, Message = "Runtime {Hours:00}:{Minutes:00}:{Seconds:00}.{Milliseconds:000}")]
     public static partial void ProfilingAspectEnd(ILogger logger, int hours, int minutes, int seconds, int milliseconds);
 }
