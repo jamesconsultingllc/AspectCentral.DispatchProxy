@@ -14,144 +14,155 @@ using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
 
-namespace AspectCentral.DispatchProxy.Tests.Logging
+namespace AspectCentral.DispatchProxy.Tests.Logging;
+
+/// <summary>
+/// Tests the built-in logging aspect.
+/// </summary>
+public class LoggingAspectTests
 {
     /// <summary>
-    ///     The logging aspect tests.
+    /// Aspect configuration provider used to enable logging for all test interface methods.
     /// </summary>
-    public class LoggingAspectTests
+    private readonly IAspectConfigurationProvider _aspectConfigurationProvider;
+
+    /// <summary>
+    /// Proxied test service used by the logging assertions.
+    /// </summary>
+    private readonly ITestInterface _instance;
+
+    /// <summary>
+    /// Mock logger that receives generated logging aspect entries.
+    /// </summary>
+    private readonly Mock<ILogger> _logger;
+
+    /// <summary>
+    /// Mock logger factory used to supply <see cref="_logger" /> to the aspect.
+    /// </summary>
+    private readonly Mock<ILoggerFactory> _loggerFactory;
+
+    /// <summary>
+    /// Initializes a logging proxy over the test service.
+    /// </summary>
+    public LoggingAspectTests()
     {
-        /// <summary>
-        ///     The aspect configuration provider
-        /// </summary>
-        private readonly IAspectConfigurationProvider aspectConfigurationProvider;
+        _loggerFactory = new Mock<ILoggerFactory>();
+        _logger = new Mock<ILogger>();
+        _aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
+        var aspectConfiguration = new AspectConfiguration(new ServiceDescriptor(AspectRegistrationTests.InterfaceType,
+            AspectRegistrationTests.MyTestInterfaceType, ServiceLifetime.Transient));
+        aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType,
+            methodsToIntercept: AspectRegistrationTests.InterfaceType.GetMethods());
+        aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType,
+            methodsToIntercept: AspectRegistrationTests.InterfaceType.GetMethods());
+        _aspectConfigurationProvider.AddEntry(aspectConfiguration);
+        _loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(_logger.Object);
+        _logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        _instance = LoggingAspect<ITestInterface>.Create(
+            new MyTestInterface(),
+            typeof(MyTestInterface),
+            _loggerFactory.Object,
+            _aspectConfigurationProvider,
+            LoggingAspectFactory.LoggingAspectFactoryType);
+    }
 
-        /// <summary>
-        ///     The instance.
-        /// </summary>
-        private readonly ITestInterface instance;
+    /// <summary>
+    /// Verifies that a synchronous intercepted call logs start and end entries.
+    /// </summary>
+    [Fact]
+    public void MyTestMethod()
+    {
+        _instance.Test(1, "2", new MyUnitTestClass(1, "2"));
+        _logger.Verify(
+            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Exactly(2));
+    }
 
-        /// <summary>
-        ///     The logger.
-        /// </summary>
-        private readonly Mock<ILogger> logger;
+    /// <summary>
+    /// Verifies that an asynchronous action logs start and end entries after completion.
+    /// </summary>
+    /// <returns>
+    /// A task representing the asynchronous test.
+    /// </returns>
+    [Fact]
+    public async Task TestLoggingAsync()
+    {
+        await _instance.TestAsync(1, "2", null!);
+        _logger.Verify(
+            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Exactly(2));
+    }
 
-        /// <summary>
-        ///     The logger factory.
-        /// </summary>
-        private readonly Mock<ILoggerFactory> loggerFactory;
+    /// <summary>
+    /// Verifies that an asynchronous function logs start, return value, and end entries.
+    /// </summary>
+    /// <returns>
+    /// A task representing the asynchronous test.
+    /// </returns>
+    [Fact]
+    public async Task TestLoggingAsyncWithResult()
+    {
+        await _instance.GetClassByIdAsync(1);
+        _logger.Verify(
+            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
+                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
+            Times.Exactly(3));
+    }
 
-        /// <summary>
-        ///     The my test method.
-        /// </summary>
-        [Fact]
-        public void MyTestMethod()
-        {
-            instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
-        }
+    [Fact]
+    public void CreateNullInstanceThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
+            null!,
+            typeof(MyTestInterface),
+            _loggerFactory.Object,
+            _aspectConfigurationProvider,
+            LoggingAspectFactory.LoggingAspectFactoryType));
+    }
 
-        /// <summary>
-        ///     The test initialize.
-        /// </summary>
-        public LoggingAspectTests()
-        {
-            loggerFactory = new Mock<ILoggerFactory>();
-            logger = new Mock<ILogger>();
-            aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
-            var aspectConfiguration = new AspectConfiguration(new ServiceDescriptor(AspectRegistrationTests.IInterfaceType, AspectRegistrationTests.MyTestInterfaceType, ServiceLifetime.Transient));
-            aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
-            aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
-            aspectConfigurationProvider.AddEntry(aspectConfiguration);
-            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(logger.Object);
-            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-            instance = LoggingAspect<ITestInterface>.Create(
-                new MyTestInterface(),
-                typeof(MyTestInterface),
-                loggerFactory.Object,
-                aspectConfigurationProvider,
-                LoggingAspectFactory.LoggingAspectFactoryType);
-        }
+    [Fact]
+    public void CreateNullTypeThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
+            new MyTestInterface(),
+            null!,
+            _loggerFactory.Object,
+            _aspectConfigurationProvider,
+            LoggingAspectFactory.LoggingAspectFactoryType));
+    }
 
-        /// <summary>
-        /// The test logging async.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        [Fact]
-        public async Task TestLoggingAsync()
-        {
-            await instance.TestAsync(1, "2", null!);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
-        }
+    [Fact]
+    public void CreateNullLoggerThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
+            new MyTestInterface(),
+            typeof(MyTestInterface),
+            null!,
+            _aspectConfigurationProvider,
+            LoggingAspectFactory.LoggingAspectFactoryType));
+    }
 
-        /// <summary>
-        /// The test logging async with result.
-        /// </summary>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        [Fact]
-        public async Task TestLoggingAsyncWithResult()
-        {
-            await instance.GetClassByIdAsync(1);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(3));
-        }
-        
-        [Fact]
-        public void CreateNullInstanceThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                null!,
-                typeof(MyTestInterface),
-                loggerFactory.Object,
-                aspectConfigurationProvider,
-                LoggingAspectFactory.LoggingAspectFactoryType));
-        }
-        
-        [Fact]
-        public void CreateNullTypeThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                new MyTestInterface(), 
-                null!,
-                loggerFactory.Object,
-                aspectConfigurationProvider,
-                LoggingAspectFactory.LoggingAspectFactoryType));
-        }
-        
-        [Fact]
-        public void CreateNullLoggerThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                new MyTestInterface(), 
-                typeof(MyTestInterface),
-                null!,
-                aspectConfigurationProvider,
-                LoggingAspectFactory.LoggingAspectFactoryType));
-        }
-        
-        [Fact]
-        public void CreateNullAspectConfigurationProviderThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                new MyTestInterface(), 
-                typeof(MyTestInterface),
-                loggerFactory.Object,
-                null!,
-                LoggingAspectFactory.LoggingAspectFactoryType));
-        }
-        
-        [Fact]
-        public void CreateNullFactoryTypeThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                new MyTestInterface(), 
-                typeof(MyTestInterface),
-                loggerFactory.Object,
-                aspectConfigurationProvider,
-                null!));
-        }
+    [Fact]
+    public void CreateNullAspectConfigurationProviderThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
+            new MyTestInterface(),
+            typeof(MyTestInterface),
+            _loggerFactory.Object,
+            null!,
+            LoggingAspectFactory.LoggingAspectFactoryType));
+    }
+
+    [Fact]
+    public void CreateNullFactoryTypeThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
+            new MyTestInterface(),
+            typeof(MyTestInterface),
+            _loggerFactory.Object,
+            _aspectConfigurationProvider,
+            null!));
     }
 }

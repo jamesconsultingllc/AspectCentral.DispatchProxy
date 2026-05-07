@@ -10,10 +10,9 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
-using System.Reflection;
-using System.Threading.Tasks;
+using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Diagnostics.Metrics;
+using System.Reflection;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
@@ -25,50 +24,120 @@ using MethodTypeOptions = AspectCentral.Abstractions.MethodTypeOptions;
 namespace AspectCentral.DispatchProxy;
 
 /// <summary>
-///     Base class for implementing AOP aspects using <see cref="System.Reflection.DispatchProxy"/>.
-///     Provides hooks for pre- and post-invocation logic, supports sync and async methods,
-///     and includes built-in observability via OpenTelemetry.
+/// Provides reusable helpers for invoking asynchronous methods that return <see cref="Task{TResult}" />
+/// through an aspect.
+/// </summary>
+internal static class BaseAspectAsyncProcessor
+{
+    /// <summary>
+    /// Cached <see cref="MethodInfo" /> for <see cref="ProcessFunctionAsync{TK}" /> so callers can
+    /// close the generic method for the intercepted return type without using private reflection.
+    /// </summary>
+    public static readonly MethodInfo ProcessFunctionMethodInfo =
+        typeof(BaseAspectAsyncProcessor).GetMethod(
+            nameof(ProcessFunctionAsync),
+            BindingFlags.Static | BindingFlags.Public)!;
+
+    /// <summary>
+    /// Awaits an intercepted <see cref="Task{TResult}" />, stores its completed result in the
+    /// supplied <see cref="AspectContext" />, and always runs the aspect's post-invocation hook.
+    /// </summary>
+    /// <param name="task">The task returned by the intercepted implementation method.</param>
+    /// <param name="aspectContext">The invocation context whose return value is updated after completion.</param>
+    /// <param name="postInvoke">The post-invocation callback to run after the task completes or faults.</param>
+    /// <typeparam name="TK">The result type produced by the intercepted task.</typeparam>
+    /// <returns>The result produced by <paramref name="task" />.</returns>
+    public static async Task<TK> ProcessFunctionAsync<TK>(
+        Task<TK> task,
+        AspectContext aspectContext,
+        Action<AspectContext> postInvoke)
+    {
+        try
+        {
+            var result = await task;
+            aspectContext.ReturnValue = result;
+            return result;
+        }
+        finally
+        {
+            postInvoke(aspectContext);
+        }
+    }
+}
+
+/// <summary>
+/// Caches interface-to-implementation method maps used to resolve intercepted interface calls to
+/// their concrete implementation methods.
+/// </summary>
+internal static class BaseAspectMethodMapCache
+{
+    /// <summary>
+    /// Method maps keyed by concrete implementation type and interface type.
+    /// </summary>
+    private static readonly ConcurrentDictionary<(Type Impl, Type Iface), Dictionary<MethodInfo, MethodInfo>>
+        InterfaceMethodMaps = new();
+
+    /// <summary>
+    /// Gets an existing method map for the supplied type pair or creates it from
+    /// <see cref="Type.GetInterfaceMap(Type)" />.
+    /// </summary>
+    /// <param name="implType">The concrete implementation type being proxied.</param>
+    /// <param name="interfaceType">The interface type that declared the intercepted method.</param>
+    /// <returns>A dictionary mapping interface methods to implementation methods.</returns>
+    public static Dictionary<MethodInfo, MethodInfo> GetOrAdd(Type implType, Type interfaceType)
+    {
+        return InterfaceMethodMaps.GetOrAdd((implType, interfaceType), key =>
+        {
+            var map = key.Impl.GetInterfaceMap(key.Iface);
+            var dict = new Dictionary<MethodInfo, MethodInfo>(map.InterfaceMethods.Length);
+            for (var i = 0; i < map.InterfaceMethods.Length; i++) dict[map.InterfaceMethods[i]] = map.TargetMethods[i];
+
+            return dict;
+        });
+    }
+}
+
+/// <summary>
+/// Base class for implementing AOP aspects using <see cref="System.Reflection.DispatchProxy" />.
+/// Provides hooks for pre- and post-invocation logic, supports sync and async methods,
+/// and includes built-in observability via OpenTelemetry.
 /// </summary>
 /// <typeparam name="T">The interface type being proxied.</typeparam>
 public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : class?
 {
-    /// <summary>
-    ///     Cached MethodInfo for the generic async result processor.
-    /// </summary>
-    private static readonly MethodInfo ProcessFunctionMethodInfo =
-        typeof(BaseAspect<T>).GetMethod("ProcessFunctionAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+    private const string Aspect = "aspect";
 
     /// <summary>
-    ///     Gets or sets the type of the factory that created this aspect.
+    /// Gets or sets the type of the factory that created this aspect.
     /// </summary>
     protected Type FactoryType { get; set; } = default!;
 
     /// <summary>
-    ///     Gets or sets the provider used to determine if a method should be intercepted.
+    /// Gets or sets the provider used to determine if a method should be intercepted.
     /// </summary>
     protected IAspectConfigurationProvider AspectConfigurationProvider { get; set; } = default!;
 
     /// <summary>
-    ///     Gets or sets the underlying service instance being wrapped.
+    /// Gets or sets the underlying service instance being wrapped.
     /// </summary>
     protected T Instance { get; set; } = default!;
 
     /// <summary>
-    ///     Gets or sets the logger used for diagnostic information.
+    /// Gets or sets the logger used for diagnostic information.
     /// </summary>
     protected ILogger Logger { get; set; } = default!;
 
     /// <summary>
-    ///     Gets or sets the concrete implementation type of the service.
+    /// Gets or sets the concrete implementation type of the service.
     /// </summary>
     protected Type ObjectType { get; set; } = default!;
 
     /// <summary>
-    ///     Generates the context for the current method invocation.
+    /// Generates the context for the current method invocation.
     /// </summary>
     /// <param name="targetMethod">The method being called on the interface.</param>
     /// <param name="args">The arguments passed to the method.</param>
-    /// <returns>A new <see cref="AspectContext"/> containing invocation details.</returns>
+    /// <returns>A new <see cref="AspectContext" /> containing invocation details.</returns>
     public virtual AspectContext GenerateAspectContext(MethodInfo targetMethod, object[] args)
     {
         return new AspectContext(targetMethod, args)
@@ -79,46 +148,27 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     Cache of interface→implementation method mappings keyed by (implementation type, interface
-    ///     type). Built from <see cref="Type.GetInterfaceMap"/> so it correctly handles both public and
-    ///     explicit interface implementations.
-    /// </summary>
-    private static readonly System.Collections.Concurrent.ConcurrentDictionary<(Type Impl, Type Iface), Dictionary<MethodInfo, MethodInfo>>
-        InterfaceMethodMaps = new();
-
-    private static Dictionary<MethodInfo, MethodInfo> GetMethodMap(Type implType, Type interfaceType)
-    {
-        return InterfaceMethodMaps.GetOrAdd((implType, interfaceType), key =>
-        {
-            var map = key.Impl.GetInterfaceMap(key.Iface);
-            var dict = new Dictionary<MethodInfo, MethodInfo>(map.InterfaceMethods.Length);
-            for (var i = 0; i < map.InterfaceMethods.Length; i++)
-            {
-                dict[map.InterfaceMethods[i]] = map.TargetMethods[i];
-            }
-            return dict;
-        });
-    }
-
-    /// <summary>
-    ///     Resolves the concrete implementation method and generates a descriptive invocation string.
+    /// Resolves the concrete implementation method and generates a descriptive invocation string.
     /// </summary>
     /// <param name="targetMethod">The interface method being invoked.</param>
     /// <param name="args">The method arguments.</param>
-    /// <param name="implementationMethod">Output parameter containing the resolved <see cref="MethodInfo"/> on the implementation type.</param>
+    /// <param name="implementationMethod">
+    /// Output parameter containing the resolved <see cref="MethodInfo" /> on the
+    /// implementation type.
+    /// </param>
     /// <returns>A string representation of the method call with its arguments.</returns>
     /// <remarks>
-    ///     Uses <see cref="Type.GetInterfaceMap"/> rather than <see cref="Type.GetMethods()"/> so that
-    ///     explicit interface implementations (which are non-public and excluded from
-    ///     <c>GetMethods()</c>) resolve correctly, and so overload resolution does not depend on
-    ///     <c>MethodInfo.ToString()</c> string equality.
+    /// Uses <see cref="Type.GetInterfaceMap" /> rather than <see cref="Type.GetMethods()" /> so that
+    /// explicit interface implementations (which are non-public and excluded from
+    /// <c>GetMethods()</c>) resolve correctly, and so overload resolution does not depend on
+    /// <c>MethodInfo.ToString()</c> string equality.
     /// </remarks>
     public virtual string GenerateMethodNameWithArguments(MethodInfo targetMethod, object[] args,
         out MethodInfo implementationMethod)
     {
         var interfaceType = targetMethod.DeclaringType
-            ?? throw new InvalidOperationException(
-                $"Cannot resolve implementation method for {targetMethod.Name}: targetMethod has no DeclaringType.");
+                            ?? throw new InvalidOperationException(
+                                $"Cannot resolve implementation method for {targetMethod.Name}: targetMethod has no DeclaringType.");
 
         // DispatchProxy may invoke a closed generic method; map the open generic definition through
         // GetInterfaceMap (which only knows about generic-method-definitions), then re-bind the
@@ -127,7 +177,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             ? targetMethod.GetGenericMethodDefinition()
             : targetMethod;
 
-        var methodMap = GetMethodMap(ObjectType, interfaceType);
+        var methodMap = BaseAspectMethodMapCache.GetOrAdd(ObjectType, interfaceType);
         if (!methodMap.TryGetValue(lookupKey, out var resolved))
         {
             // Fall back to the legacy ToString-based lookup against the public methods cache for any
@@ -137,6 +187,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                 AspectLogs.AddedMethodsToCache(Logger, ObjectType.FullName ?? ObjectType.Name);
                 JamesConsulting.Constants.TypeMethods[ObjectType] = ObjectType.GetMethods();
             }
+
             var methodName = lookupKey.ToString();
             resolved = JamesConsulting.Constants.TypeMethods[ObjectType]
                 .Single(x => x.ToString() == methodName);
@@ -150,12 +201,12 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     Dispatches the method invocation. Wraps the call in pre/post invocation hooks and telemetry spans.
+    /// Dispatches the method invocation. Wraps the call in pre/post invocation hooks and telemetry spans.
     /// </summary>
     /// <param name="targetMethod">The method to be invoked.</param>
     /// <param name="args">The arguments to pass to the method.</param>
     /// <returns>The result of the method invocation.</returns>
-    /// <exception cref="ArgumentNullException">Thrown if <paramref name="targetMethod"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="targetMethod" /> is null.</exception>
     protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
     {
         if (targetMethod == null) throw new ArgumentNullException(nameof(targetMethod));
@@ -165,7 +216,9 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
         AspectLogs.AspectContextGenerated(Logger);
 
         var previousActivity = Activity.Current;
-        var activity = LibraryActivitySources.ActivitySource.StartActivity($"{targetMethod.DeclaringType?.Name}.{targetMethod.Name}");
+        var activity =
+            LibraryActivitySources.ActivitySource.StartActivity(
+                $"{targetMethod.DeclaringType?.Name}.{targetMethod.Name}");
         if (activity != null)
         {
             activity.SetTag("code.namespace", targetMethod.DeclaringType?.Namespace);
@@ -190,10 +243,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                     Invoke(aspectContext);
                 }
 
-                if (!isAsync)
-                {
-                    PostInvoke(aspectContext);
-                }
+                if (!isAsync) PostInvoke(aspectContext);
             }
             else
             {
@@ -223,9 +273,9 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     Pass-through dispatch for methods filtered out by <see cref="ShouldIntercept"/>. Invokes
-    ///     the target method and surfaces its return value (sync result or <see cref="Task"/>) without
-    ///     running <see cref="PreInvoke"/> or <see cref="PostInvoke"/>.
+    /// Pass-through dispatch for methods filtered out by <see cref="ShouldIntercept" />. Invokes
+    /// the target method and surfaces its return value (sync result or <see cref="Task" />) without
+    /// running <see cref="PreInvoke" /> or <see cref="PostInvoke" />.
     /// </summary>
     private void InvokeWithoutInterception(AspectContext aspectContext)
     {
@@ -233,20 +283,21 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     Records success metrics and disposes the activity. Used for both synchronous completion
-    ///     and as the success branch of <see cref="AttachAsyncTelemetry"/>.
+    /// Records success metrics and disposes the activity. Used for both synchronous completion
+    /// and as the success branch of <see cref="AttachAsyncTelemetry" />.
     /// </summary>
     private void CompleteSuccess(Activity? activity, Stopwatch sw)
     {
         sw.Stop();
-        LibraryMeters.InvocationsCounter.Add(1, new TagList { { "aspect", FactoryType.Name }, { "status", "success" } });
-        LibraryMeters.DurationHistogram.Record(sw.Elapsed.TotalMilliseconds, new TagList { { "aspect", FactoryType.Name } });
+        LibraryMeters.InvocationsCounter.Add(1, new TagList { { Aspect, FactoryType.Name }, { "status", "success" } });
+        LibraryMeters.DurationHistogram.Record(sw.Elapsed.TotalMilliseconds,
+            new TagList { { Aspect, FactoryType.Name } });
         activity?.Dispose();
     }
 
     /// <summary>
-    ///     Records error metrics, sets the activity status to <see cref="ActivityStatusCode.Error"/>,
-    ///     adds an <c>exception</c> activity event, and disposes the activity.
+    /// Records error metrics, sets the activity status to <see cref="ActivityStatusCode.Error" />,
+    /// adds an <c>exception</c> activity event, and disposes the activity.
     /// </summary>
     private void CompleteError(Activity? activity, Stopwatch sw, Exception ex)
     {
@@ -261,20 +312,22 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                 { "exception.stacktrace", ex.StackTrace }
             }));
         }
-        LibraryMeters.InvocationsCounter.Add(1, new TagList { { "aspect", FactoryType.Name }, { "status", "error" } });
-        LibraryMeters.DurationHistogram.Record(sw.Elapsed.TotalMilliseconds, new TagList { { "aspect", FactoryType.Name } });
+
+        LibraryMeters.InvocationsCounter.Add(1, new TagList { { Aspect, FactoryType.Name }, { "status", "error" } });
+        LibraryMeters.DurationHistogram.Record(sw.Elapsed.TotalMilliseconds,
+            new TagList { { Aspect, FactoryType.Name } });
         activity?.Dispose();
     }
 
     /// <summary>
-    ///     Defers telemetry completion until <paramref name="taskResult"/> settles, so that
-    ///     <c>aspect.invocations</c>, <c>aspect.invocation_duration</c>, and the activity status
-    ///     reflect the actual outcome and duration of the asynchronous operation.
+    /// Defers telemetry completion until <paramref name="taskResult" /> settles, so that
+    /// <c>aspect.invocations</c>, <c>aspect.invocation_duration</c>, and the activity status
+    /// reflect the actual outcome and duration of the asynchronous operation.
     /// </summary>
     /// <remarks>
-    ///     The continuation is fire-and-forget and runs synchronously when the task settles to
-    ///     keep the recorded duration as close to actual completion as possible. The original
-    ///     task is returned to the caller unchanged.
+    /// The continuation is fire-and-forget and runs synchronously when the task settles to
+    /// keep the recorded duration as close to actual completion as possible. The original
+    /// task is returned to the caller unchanged.
     /// </remarks>
     private void AttachAsyncTelemetry(Task taskResult, Activity? activity, Stopwatch sw)
     {
@@ -297,30 +350,32 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     The post invoke.
+    /// Runs after a configured aspect has invoked the target method.
     /// </summary>
     /// <param name="aspectContext">
-    ///     The aspect Context.
+    /// The invocation context containing the target method, argument values, and return value.
     /// </param>
     public virtual void PostInvoke(AspectContext aspectContext)
     {
     }
 
     /// <summary>
-    ///     The pre invoke.
+    /// Runs before a configured aspect invokes the target method.
     /// </summary>
     /// <param name="aspectContext">
-    ///     The aspect Context.
+    /// The invocation context that can be inspected or modified before dispatch.
     /// </param>
     public virtual void PreInvoke(AspectContext aspectContext)
     {
     }
 
     /// <summary>
-    ///     The should intercept.
+    /// Determines whether the current aspect should intercept the supplied invocation.
     /// </summary>
+    /// <param name="aspectContext">The invocation context for the target method.</param>
     /// <returns>
-    ///     The <see cref="bool" />.
+    /// <see langword="true" /> when the aspect's pre/post hooks should run; otherwise
+    /// <see langword="false" />.
     /// </returns>
     public virtual bool ShouldIntercept(AspectContext aspectContext)
     {
@@ -329,21 +384,22 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     The call process function.
+    /// Invokes a target method that returns <see cref="Task{TResult}" /> and stores the wrapped task
+    /// on the invocation context.
     /// </summary>
     /// <param name="aspectContext">
-    ///     The aspect context.
+    /// The invocation context for the asynchronous function call.
     /// </param>
     private void CallProcessFunction(AspectContext aspectContext)
     {
         var resultType = aspectContext.TargetMethod.ReturnType.GetGenericArguments()[0];
-        var mi = ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
+        var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
         var task = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
-        aspectContext.ReturnValue = mi.Invoke(this, new[] { task, aspectContext });
+        aspectContext.ReturnValue = mi.Invoke(null, [task, aspectContext, (Action<AspectContext>)PostInvoke]);
     }
 
     /// <summary>
-    ///     Invokes the target method based on its return type (sync, Task, or Task{T}).
+    /// Invokes the target method based on its return type (sync, Task, or Task{T}).
     /// </summary>
     /// <param name="aspectContext">The context for the current invocation.</param>
     private void Invoke(AspectContext aspectContext)
@@ -363,10 +419,10 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     The process.
+    /// Invokes a synchronous target method and stores its return value on the invocation context.
     /// </summary>
     /// <param name="aspectContext">
-    ///     The aspect Context.
+    /// The invocation context for the synchronous call.
     /// </param>
     private void Process(AspectContext aspectContext)
     {
@@ -374,13 +430,14 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     }
 
     /// <summary>
-    ///     The process action async.
+    /// Invokes a target method that returns <see cref="Task" /> and runs post-invocation logic when
+    /// the task completes.
     /// </summary>
     /// <param name="aspectContext">
-    ///     The aspect context.
+    /// The invocation context for the asynchronous action call.
     /// </param>
     /// <returns>
-    ///     The <see cref="Task" />.
+    /// A task that represents the intercepted asynchronous action.
     /// </returns>
     private async Task ProcessAction(AspectContext aspectContext)
     {
@@ -394,37 +451,4 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             PostInvoke(aspectContext);
         }
     }
-
-    /// <summary>
-    ///     The process function async.
-    /// </summary>
-    /// <param name="task">
-    ///     The task.
-    /// </param>
-    /// <param name="aspectContext">
-    ///     The aspect context.
-    /// </param>
-    /// <typeparam name="TK">
-    /// </typeparam>
-    /// <returns>
-    ///     The <see cref="Task{TK}" />.
-    /// </returns>
-
-    // ReSharper disable once UnusedMember.Local
-#pragma warning disable S1144 // Unused private types or members should be removed
-    private async Task<TK> ProcessFunctionAsync<TK>(Task<TK> task, AspectContext aspectContext)
-    {
-        try
-        {
-            var result = await task;
-            aspectContext.ReturnValue = result;
-            return result;
-        }
-        finally
-        {
-            PostInvoke(aspectContext);
-        }
-    }
-
-#pragma warning restore S1144 // Unused private types or members should be removed
 }

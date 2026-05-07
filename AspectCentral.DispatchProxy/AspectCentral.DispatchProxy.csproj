@@ -43,22 +43,22 @@
         <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' != 'Debug' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)</VersionPrefix>
     </PropertyGroup>
     <ItemGroup>
-        <None Include="../README.md" Pack="true" PackagePath="/" />
+        <None Include="../README.md" Pack="true" PackagePath="/"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2" />
-        <PackageReference Include="JamesConsulting" Version="1.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
-        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2" />
-        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.2" />
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2"/>
+        <PackageReference Include="JamesConsulting" Version="1.0.1"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2"/>
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.2"/>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
         <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
     </ItemGroup>
     <ItemGroup>
-        <AdditionalFiles Include="PublicAPI.Shipped.txt" />
-        <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
+        <AdditionalFiles Include="PublicAPI.Shipped.txt"/>
+        <AdditionalFiles Include="PublicAPI.Unshipped.txt"/>
     </ItemGroup>
 </Project>

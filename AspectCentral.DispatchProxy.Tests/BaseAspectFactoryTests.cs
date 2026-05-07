@@ -11,20 +11,20 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace AspectCentral.DispatchProxy.Tests
-{
-    public class BaseAspectFactoryTests
-    {
-        [Fact]
-        public void ConstructorThrowsArgumentNullExceptionWhenLoggerFactoryIsNull()
-        {
-            Assert.Throws<ArgumentNullException>("loggerFactory", () => new TestAspectFactory(null!, null!));
-        }
+namespace AspectCentral.DispatchProxy.Tests;
 
-        [Fact]
-        public void ConstructorThrowsArgumentNullExceptionWhenAspectConfigurationProviderIsNull()
-        {
-            Assert.Throws<ArgumentNullException>("aspectConfigurationProvider", () => new TestAspectFactory(new NullLoggerFactory(), null!));
-        }
+public class BaseAspectFactoryTests
+{
+    [Fact]
+    public void ConstructorThrowsArgumentNullExceptionWhenLoggerFactoryIsNull()
+    {
+        Assert.Throws<ArgumentNullException>("loggerFactory", () => new TestAspectFactory(null!, null!));
+    }
+
+    [Fact]
+    public void ConstructorThrowsArgumentNullExceptionWhenAspectConfigurationProviderIsNull()
+    {
+        Assert.Throws<ArgumentNullException>("aspectConfigurationProvider",
+            () => new TestAspectFactory(new NullLoggerFactory(), null!));
     }
 }

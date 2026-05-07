@@ -28,8 +28,8 @@ metrics light up automatically when a consumer wires up OpenTelemetry.
 - [Concepts](#concepts)
 - [Quick Start](#quick-start)
 - [Built-in Aspects](#built-in-aspects)
-  - [Logging Aspect](#logging-aspect)
-  - [Profiling Aspect](#profiling-aspect)
+    - [Logging Aspect](#logging-aspect)
+    - [Profiling Aspect](#profiling-aspect)
 - [Writing a Custom Aspect](#writing-a-custom-aspect)
 - [Method Filtering](#method-filtering)
 - [Async Method Support](#async-method-support)
@@ -81,14 +81,14 @@ related primitives. It is pulled in transitively — you do not need to install 
 
 ## Concepts
 
-| Concept | Type | Role |
-|---|---|---|
-| **Aspect** | `BaseAspect<T>` | The proxy itself. Holds the wrapped instance and exposes `PreInvoke` / `PostInvoke` hooks around every intercepted call. |
-| **Aspect Factory** | `IAspectFactory` / `BaseAspectFactory` | Knows how to construct an aspect of a given type around a given service instance. Registered as a singleton in DI and resolved per-request when the proxy chain is composed. |
-| **Registration Builder** | `IAspectRegistrationBuilder` (from `AspectCentral.Abstractions`), implemented here by `DispatchProxyAspectRegistrationBuilder` | Fluent API for declaring "wrap service X with aspects A, B, C." Builds an `AspectConfiguration`. |
-| **Aspect Configuration** | `AspectConfiguration` | The data model: which factories apply to which `(serviceType, implementationType)` pair, in what order, and which methods to intercept. |
-| **Aspect Configuration Provider** | `IAspectConfigurationProvider` | Read-only view of the configuration consulted at proxy construction time and on every call (`ShouldIntercept(...)`). |
-| **Aspect Context** | `AspectContext` | Per-call state: the target `MethodInfo`, arguments, return value, async kind, and a human-readable `InvocationString` for logs. |
+| Concept                           | Type                                                                                                                           | Role                                                                                                                                                                         |
+|-----------------------------------|--------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| **Aspect**                        | `BaseAspect<T>`                                                                                                                | The proxy itself. Holds the wrapped instance and exposes `PreInvoke` / `PostInvoke` hooks around every intercepted call.                                                     |
+| **Aspect Factory**                | `IAspectFactory` / `BaseAspectFactory`                                                                                         | Knows how to construct an aspect of a given type around a given service instance. Registered as a singleton in DI and resolved per-request when the proxy chain is composed. |
+| **Registration Builder**          | `IAspectRegistrationBuilder` (from `AspectCentral.Abstractions`), implemented here by `DispatchProxyAspectRegistrationBuilder` | Fluent API for declaring "wrap service X with aspects A, B, C." Builds an `AspectConfiguration`.                                                                             |
+| **Aspect Configuration**          | `AspectConfiguration`                                                                                                          | The data model: which factories apply to which `(serviceType, implementationType)` pair, in what order, and which methods to intercept.                                      |
+| **Aspect Configuration Provider** | `IAspectConfigurationProvider`                                                                                                 | Read-only view of the configuration consulted at proxy construction time and on every call (`ShouldIntercept(...)`).                                                         |
+| **Aspect Context**                | `AspectContext`                                                                                                                | Per-call state: the target `MethodInfo`, arguments, return value, async kind, and a human-readable `InvocationString` for logs.                                              |
 
 The proxy chain is composed inside out: the innermost call is the real service; each registered
 aspect wraps the previous proxy in the order they were added.
@@ -280,10 +280,10 @@ services.AddAspectSupport().AddLoggingAspect(greet); // only Greet is logged
 
 `BaseAspect<T>.Invoke` inspects the target method's return type and dispatches accordingly:
 
-| Return type | Dispatch path | When `PostInvoke` runs |
-|---|---|---|
-| Synchronous (e.g. `int`, `void`) | `Process` | Inline, after the call returns. |
-| `Task` (async action) | `ProcessAction` | After the returned `Task` is awaited inside the proxy. |
+| Return type                      | Dispatch path                                           | When `PostInvoke` runs                                                 |
+|----------------------------------|---------------------------------------------------------|------------------------------------------------------------------------|
+| Synchronous (e.g. `int`, `void`) | `Process`                                               | Inline, after the call returns.                                        |
+| `Task` (async action)            | `ProcessAction`                                         | After the returned `Task` is awaited inside the proxy.                 |
 | `Task<TResult>` (async function) | `ProcessFunctionAsync<TResult>` (resolved reflectively) | After the awaited result is captured into `aspectContext.ReturnValue`. |
 
 This means a profiling aspect on an `async Task<T>` method correctly measures the **end-to-end
@@ -304,13 +304,13 @@ The library exposes a single `ActivitySource` and a single `Meter`. Both are als
 `AspectCentral.DispatchProxy.Aspects` — every intercepted call opens an `Activity` named
 `{InterfaceName}.{MethodName}` with the following tags:
 
-| Tag | Description |
-|---|---|
-| `code.namespace` | Namespace of the interface declaring the method. |
-| `code.function` | Method name. |
-| `aspect.factory` | Full type name of the factory that built the proxy. |
-| `aspect.target_type` | Full type name of the underlying implementation. |
-| `aspect.interface_type` | Full type name of the proxied interface. |
+| Tag                     | Description                                         |
+|-------------------------|-----------------------------------------------------|
+| `code.namespace`        | Namespace of the interface declaring the method.    |
+| `code.function`         | Method name.                                        |
+| `aspect.factory`        | Full type name of the factory that built the proxy. |
+| `aspect.target_type`    | Full type name of the underlying implementation.    |
+| `aspect.interface_type` | Full type name of the proxied interface.            |
 
 When the underlying call throws, the activity status is set to `Error` and an `exception` event
 is recorded with `exception.type`, `exception.message`, and `exception.stacktrace`.
@@ -319,10 +319,10 @@ is recorded with `exception.type`, `exception.message`, and `exception.stacktrac
 
 `AspectCentral.DispatchProxy.Aspects` exposes:
 
-| Instrument | Type | Unit | Tags | Purpose |
-|---|---|---|---|---|
-| `aspect.invocations` | `Counter<long>` | (none) | `aspect`, `status` (`success`/`error`) | Total intercepted calls. |
-| `aspect.invocation_duration` | `Histogram<double>` | `ms` | `aspect` | Per-call wall-clock duration. |
+| Instrument                   | Type                | Unit   | Tags                                   | Purpose                       |
+|------------------------------|---------------------|--------|----------------------------------------|-------------------------------|
+| `aspect.invocations`         | `Counter<long>`     | (none) | `aspect`, `status` (`success`/`error`) | Total intercepted calls.      |
+| `aspect.invocation_duration` | `Histogram<double>` | `ms`   | `aspect`                               | Per-call wall-clock duration. |
 
 ### Wiring up OpenTelemetry
 
@@ -351,13 +351,13 @@ The pipeline runs in three phases:
 `services.AddAspectSupport()` does the following:
 
 1. Calls `GetOrAddInMemoryProvider`, which:
-   - Returns the existing `InMemoryAspectConfigurationProvider` if one was previously registered as
-     an `ImplementationInstance` singleton.
-   - Throws `InvalidOperationException` if an `IAspectConfigurationProvider` is already registered
-     via type or factory (the existing instance cannot be observed up-front, so silent reuse would
-     risk a provider mismatch at runtime).
-   - Otherwise registers a new instance via
-     `AddSingleton<IAspectConfigurationProvider>(provider)`.
+    - Returns the existing `InMemoryAspectConfigurationProvider` if one was previously registered as
+      an `ImplementationInstance` singleton.
+    - Throws `InvalidOperationException` if an `IAspectConfigurationProvider` is already registered
+      via type or factory (the existing instance cannot be observed up-front, so silent reuse would
+      risk a provider mismatch at runtime).
+    - Otherwise registers a new instance via
+      `AddSingleton<IAspectConfigurationProvider>(provider)`.
 2. Scans every loaded assembly via `AppDomain.CurrentDomain.GetAssemblies()` and finds every
    concrete `IAspectFactory`. Each is `TryAddSingleton`-registered against itself.
 3. Returns a `DispatchProxyAspectRegistrationBuilder` for fluent chaining.
@@ -388,9 +388,9 @@ When a method is called on the outermost proxy, `BaseAspect<T>.Invoke`:
    `InvocationString`, sets `MethodType` to sync / async-action / async-function).
 2. Starts an `Activity` and tags it.
 3. Asks `IAspectConfigurationProvider.ShouldIntercept(...)`.
-   - If yes → `PreInvoke` → dispatch on `MethodTypeOptions` → `PostInvoke` (inline for sync; via
-     `ContinueWith` / async continuation for `Task`/`Task<T>`).
-   - If no → dispatch directly without hooks.
+    - If yes → `PreInvoke` → dispatch on `MethodTypeOptions` → `PostInvoke` (inline for sync; via
+      `ContinueWith` / async continuation for `Task`/`Task<T>`).
+    - If no → dispatch directly without hooks.
 4. Records `aspect.invocations` and `aspect.invocation_duration`.
 5. Re-throws on exception with the activity marked `Error`.
 
@@ -446,10 +446,10 @@ builds get `-$(BUILD_BUILDNUMBER)-preview`.
 
 The package follows [Semantic Versioning](https://semver.org/):
 
-| Change | Bump |
-|---|---|
-| Bug fix, perf improvement, internal refactor | **Patch** (`x.y.Z`) |
-| New public API (backward-compatible) | **Minor** (`x.Y.0`) |
+| Change                                                            | Bump                |
+|-------------------------------------------------------------------|---------------------|
+| Bug fix, perf improvement, internal refactor                      | **Patch** (`x.y.Z`) |
+| New public API (backward-compatible)                              | **Minor** (`x.Y.0`) |
 | Removal, signature change, or constraint tightening on public API | **Major** (`X.0.0`) |
 
 Constraint changes on public generics (e.g. `where T : class?` → `where T : class`) are

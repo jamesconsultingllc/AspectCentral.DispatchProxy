@@ -7,35 +7,39 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace AspectCentral.DispatchProxy.Tests
+namespace AspectCentral.DispatchProxy.Tests;
+
+/// <summary>
+/// Concrete implementation of <see cref="ITestInterface" /> used by proxy tests.
+/// </summary>
+public class MyTestInterface : ITestInterface
 {
     /// <summary>
-    ///     The my interface.
+    /// Cached <see cref="Type" /> token for this test implementation.
     /// </summary>
-    public class MyTestInterface : ITestInterface
+    public static readonly Type Type = typeof(MyTestInterface);
+
+    /// <inheritdoc />
+    public async Task<MyUnitTestClass> GetClassByIdAsync(int id)
     {
-        public static readonly Type Type = typeof(MyTestInterface);
-        /// <inheritdoc />
-        public async Task<MyUnitTestClass> GetClassByIdAsync(int id)
-        {
-            await Task.Delay(100);
-            return new MyUnitTestClass(id, id.ToString());
-        }
+        await Task.Delay(100);
+        return new MyUnitTestClass(id, id.ToString());
+    }
 
-        /// <inheritdoc />
-        public void Test(int x, string y, MyUnitTestClass myUnitTestClass)
-        {
-            Console.WriteLine("testing");
-        }
+    /// <inheritdoc />
+    public void Test(int x, string y, MyUnitTestClass myUnitTestClass)
+    {
+        Console.WriteLine("testing");
+    }
 
-        /// <inheritdoc />
-        public async Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass)
-        {
-            await Task.Delay(100);
-        }
+    /// <inheritdoc />
+    public async Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass)
+    {
+        await Task.Delay(100);
+    }
 
-        public void GenericTest<T>(int x, T entity, bool enable)
-        {
-        }
+    /// <inheritdoc />
+    public void GenericTest<T>(int x, T entity, bool enable)
+    {
     }
 }

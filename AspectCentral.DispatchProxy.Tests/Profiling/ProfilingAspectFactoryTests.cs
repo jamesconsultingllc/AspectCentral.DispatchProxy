@@ -4,51 +4,51 @@ using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
-namespace AspectCentral.DispatchProxy.Tests.Profiling
+namespace AspectCentral.DispatchProxy.Tests.Profiling;
+
+public class ProfilingAspectFactoryTests
 {
-    public class ProfilingAspectFactoryTests
+    private readonly ProfilingAspectFactory _instance;
+
+    public ProfilingAspectFactoryTests()
     {
-        private readonly ProfilingAspectFactory instance;
+        _instance = new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider());
+    }
 
-        [Fact]
-        public void NullLoggerFactoryThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(null!, null!));
-        }
+    [Fact]
+    public void NullLoggerFactoryThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(null!, null!));
+    }
 
-        [Fact]
-        public void NullAspectConfigurationProviderThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(new NullLoggerFactory(), null!));
-        }
+    [Fact]
+    public void NullAspectConfigurationProviderThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(new NullLoggerFactory(), null!));
+    }
 
-        [Fact]
-        public void ProfilingAspectFactoryConstructorSucceeds()
-        {
-            new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()).Should().NotBeNull();
-        }
+    [Fact]
+    public void ProfilingAspectFactoryConstructorSucceeds()
+    {
+        new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()).Should()
+            .NotBeNull();
+    }
 
-        public ProfilingAspectFactoryTests()
-        {
-            instance = new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider());
-        }
-        
-        [Fact]
-        public void CreateNullInstanceThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => instance.Create(default(MyTestInterface), typeof(MyTestInterface)));
-        }
-        
-        [Fact]
-        public void CreateNullTypeThrowsArgumentNullException()
-        {
-            Assert.Throws<ArgumentNullException>(() => instance.Create(new MyTestInterface(), null!));
-        }
-        
-        [Fact]
-        public void CreatedObjectShouldNotBeNull()
-        {
-            instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)).Should().NotBeNull();
-        }
+    [Fact]
+    public void CreateNullInstanceThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => _instance.Create(default(MyTestInterface), typeof(MyTestInterface)));
+    }
+
+    [Fact]
+    public void CreateNullTypeThrowsArgumentNullException()
+    {
+        Assert.Throws<ArgumentNullException>(() => _instance.Create(new MyTestInterface(), null!));
+    }
+
+    [Fact]
+    public void CreatedObjectShouldNotBeNull()
+    {
+        _instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)).Should().NotBeNull();
     }
 }

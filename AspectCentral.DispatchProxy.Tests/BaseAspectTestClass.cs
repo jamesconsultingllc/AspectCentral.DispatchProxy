@@ -13,66 +13,67 @@ using AspectCentral.Abstractions.Configuration;
 using JamesConsulting.Threading;
 using Microsoft.Extensions.Logging;
 
-#nullable enable annotations
+namespace AspectCentral.DispatchProxy.Tests;
 
-namespace AspectCentral.DispatchProxy.Tests
+/// <summary>
+/// Test aspect that short-circuits intercepted calls by supplying a synthetic return value.
+/// </summary>
+/// <typeparam name="T">
+/// The interface type being proxied.
+/// </typeparam>
+public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
-    ///     The generic base aspect tests.
+    /// Creates a configured proxy instance for exercising <see cref="BaseAspect{T}" /> behavior.
     /// </summary>
-    /// <typeparam name="T">
-    /// </typeparam>
-    public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
+    /// <param name="instance">
+    /// The service instance to wrap.
+    /// </param>
+    /// <param name="type">
+    /// The concrete implementation type behind <paramref name="instance" />.
+    /// </param>
+    /// <param name="loggerFactory">
+    /// The logger factory used by the proxy.
+    /// </param>
+    /// <param name="inMemoryAspectConfigurationProvider">
+    /// The configuration provider consulted by the proxy.
+    /// </param>
+    /// <returns>
+    /// A proxy implementing <typeparamref name="T" />.
+    /// </returns>
+    public static T Create(T instance, Type type, ILoggerFactory loggerFactory,
+        IAspectConfigurationProvider inMemoryAspectConfigurationProvider)
     {
-        /// <summary>
-        ///     The create.
-        /// </summary>
-        /// <param name="instance">
-        ///     The instance.
-        /// </param>
-        /// <param name="type">
-        /// </param>
-        /// <param name="loggerFactory">
-        ///     The logger.
-        /// </param>
-        /// <param name="inMemoryAspectConfigurationProvider">
-        /// </param>
-        /// <returns>
-        ///     The <see cref="T" />.
-        /// </returns>
-        public static T Create(T instance, Type type, ILoggerFactory loggerFactory, IAspectConfigurationProvider inMemoryAspectConfigurationProvider)
-        {
-            object proxy = Create<T, BaseAspectTestClass<T>>()!;
-            ((BaseAspectTestClass<T>) proxy).Instance = instance;
-            ((BaseAspectTestClass<T>) proxy).ObjectType = type;
-            ((BaseAspectTestClass<T>) proxy).AspectConfigurationProvider = inMemoryAspectConfigurationProvider;
-            ((BaseAspectTestClass<T>) proxy).Logger = loggerFactory.CreateLogger(type.FullName!);
-            ((BaseAspectTestClass<T>) proxy).FactoryType = TestAspectFactory.Type;
-            return (T) proxy;
-        }
+        object proxy = Create<T, BaseAspectTestClass<T>>()!;
+        ((BaseAspectTestClass<T>)proxy).Instance = instance;
+        ((BaseAspectTestClass<T>)proxy).ObjectType = type;
+        ((BaseAspectTestClass<T>)proxy).AspectConfigurationProvider = inMemoryAspectConfigurationProvider;
+        ((BaseAspectTestClass<T>)proxy).Logger = loggerFactory.CreateLogger(type.FullName!);
+        ((BaseAspectTestClass<T>)proxy).FactoryType = TestAspectFactory.Type;
+        return (T)proxy;
+    }
 
-        /// <summary>
-        ///     The post invoke.
-        /// </summary>
-        /// <param name="aspectContext">
-        ///     The aspect context.
-        /// </param>
-        public override void PostInvoke(AspectContext aspectContext)
-        {
-            Logger.LogInformation("Should not be invoked");
-        }
+    /// <summary>
+    /// Logs when post-invocation logic unexpectedly runs for this short-circuiting test aspect.
+    /// </summary>
+    /// <param name="aspectContext">
+    /// The invocation context for the completed method call.
+    /// </param>
+    public override void PostInvoke(AspectContext aspectContext)
+    {
+        Logger.LogInformation("Should not be invoked");
+    }
 
-        /// <summary>
-        ///     The pre invoke.
-        /// </summary>
-        /// <param name="aspectContext">
-        ///     The aspect context.
-        /// </param>
-        public override void PreInvoke(AspectContext aspectContext)
-        {
-            Logger.LogInformation("Setting result");
-            aspectContext.ReturnValue = aspectContext.TargetMethod.CreateTaskResult(new MyUnitTestClass(12, "testing 123"));
-            aspectContext.InvokeMethod = false;
-        }
+    /// <summary>
+    /// Supplies a synthetic task result and prevents the underlying method from running.
+    /// </summary>
+    /// <param name="aspectContext">
+    /// The invocation context to modify before dispatch.
+    /// </param>
+    public override void PreInvoke(AspectContext aspectContext)
+    {
+        Logger.LogInformation("Setting result");
+        aspectContext.ReturnValue = aspectContext.TargetMethod.CreateTaskResult(new MyUnitTestClass(12, "testing 123"));
+        aspectContext.InvokeMethod = false;
     }
 }

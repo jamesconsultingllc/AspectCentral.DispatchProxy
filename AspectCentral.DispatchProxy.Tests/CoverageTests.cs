@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using AspectCentral.DispatchProxy.Profiling;
@@ -14,18 +13,18 @@ using Xunit;
 namespace AspectCentral.DispatchProxy.Tests;
 
 /// <summary>
-///     Targeted tests for branches in <see cref="BaseAspect{T}"/>,
-///     <see cref="DispatchProxyAspectRegistrationBuilder"/>, and
-///     <see cref="ServiceCollectionExtensions"/> that the rest of the suite does not exercise:
-///     activity-tag emission, the no-intercept pass-through path, sync exception propagation,
-///     async faulted/canceled task telemetry, the empty virtual <c>PreInvoke</c>/<c>PostInvoke</c>
-///     defaults, the static <c>Type</c> tokens on the built-in aspects, the params-Assembly[]
-///     overload of <c>AddAspectSupport</c>, and the public <c>InvokeCreateFactory</c> override.
+/// Targeted tests for branches in <see cref="BaseAspect{T}" />,
+/// <see cref="DispatchProxyAspectRegistrationBuilder" />, and
+/// <see cref="ServiceCollectionExtensions" /> that the rest of the suite does not exercise:
+/// activity-tag emission, the no-intercept pass-through path, sync exception propagation,
+/// async faulted/canceled task telemetry, the empty virtual <c>PreInvoke</c>/<c>PostInvoke</c>
+/// defaults, the static <c>Type</c> tokens on the built-in aspects, the params-Assembly[]
+/// overload of <c>AddAspectSupport</c>, and the public <c>InvokeCreateFactory</c> override.
 /// </summary>
 public class CoverageTests
 {
-    private static readonly Type ITestInterfaceType = typeof(ITestInterface);
-    private static readonly Type IThrowingType = typeof(IThrowingTestInterface);
+    private static readonly Type TestInterfaceType = typeof(ITestInterface);
+    private static readonly Type ThrowingType = typeof(IThrowingTestInterface);
 
     private static (ILoggerFactory loggerFactory, Mock<ILogger> logger, IAspectConfigurationProvider provider)
         CreateInfrastructure(Type targetType, bool shouldIntercept = true)
@@ -51,15 +50,23 @@ public class CoverageTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == LibraryActivitySources.Aspects,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (captured) captured.Add(a); }
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = a =>
+            {
+                lock (captured)
+                {
+                    captured.Add(a);
+                }
+            }
         };
         ActivitySource.AddActivityListener(listener);
 
-        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface), loggerFactory, provider);
+        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
+            loggerFactory, provider);
         instance.Test(1, "abc", new MyUnitTestClass(1, "x"));
 
-        var activity = captured.Should().Contain(a => a.DisplayName == $"{nameof(ITestInterface)}.{nameof(ITestInterface.Test)}").Which;
+        var activity = captured.Should()
+            .Contain(a => a.DisplayName == $"{nameof(ITestInterface)}.{nameof(ITestInterface.Test)}").Which;
         activity.GetTagItem("code.namespace").Should().Be(typeof(MyTestInterface).Namespace);
         activity.GetTagItem("code.function").Should().Be(nameof(ITestInterface.Test));
         activity.GetTagItem("aspect.target_type").Should().Be(typeof(MyTestInterface).FullName);
@@ -71,8 +78,9 @@ public class CoverageTests
     [Fact]
     public void BaseAspect_PassesThroughWhenShouldInterceptReturnsFalse()
     {
-        var (loggerFactory, _, provider) = CreateInfrastructure(typeof(MyTestInterface), shouldIntercept: false);
-        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface), loggerFactory, provider);
+        var (loggerFactory, _, provider) = CreateInfrastructure(typeof(MyTestInterface), false);
+        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
+            loggerFactory, provider);
 
         var act = () => instance.Test(1, "abc", new MyUnitTestClass(1, "x"));
         act.Should().NotThrow();
@@ -86,8 +94,14 @@ public class CoverageTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == LibraryActivitySources.Aspects,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (captured) captured.Add(a); }
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = a =>
+            {
+                lock (captured)
+                {
+                    captured.Add(a);
+                }
+            }
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -111,8 +125,14 @@ public class CoverageTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == LibraryActivitySources.Aspects,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (captured) captured.Add(a); }
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = a =>
+            {
+                lock (captured)
+                {
+                    captured.Add(a);
+                }
+            }
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -135,8 +155,14 @@ public class CoverageTests
         using var listener = new ActivityListener
         {
             ShouldListenTo = source => source.Name == LibraryActivitySources.Aspects,
-            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
-            ActivityStopped = a => { lock (captured) captured.Add(a); }
+            Sample = (ref _) => ActivitySamplingResult.AllData,
+            ActivityStopped = a =>
+            {
+                lock (captured)
+                {
+                    captured.Add(a);
+                }
+            }
         };
         ActivitySource.AddActivityListener(listener);
 
@@ -146,7 +172,9 @@ public class CoverageTests
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await instance.ReturnCanceledTask());
 
         var activity = captured.Should().Contain(a =>
-            a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ReturnCanceledTask)}").Which;
+                a.DisplayName ==
+                $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ReturnCanceledTask)}")
+            .Which;
         activity.Status.Should().Be(ActivityStatusCode.Error);
     }
 
@@ -157,7 +185,8 @@ public class CoverageTests
 
         // PassThroughAspect does not override PreInvoke/PostInvoke — exercising it through a sync
         // call drives the empty virtual defaults declared on BaseAspect<T>.
-        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface), loggerFactory, provider);
+        var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
+            loggerFactory, provider);
 
         var act = () => instance.Test(7, "ok", new MyUnitTestClass(7, "ok"));
         act.Should().NotThrow();
@@ -232,7 +261,8 @@ public class CoverageTests
         var services = new ServiceCollection();
         services.AddLogging();
 
-        var sd = ServiceDescriptor.Describe(typeof(ITestInterface), _ => new MyTestInterface(), ServiceLifetime.Transient);
+        var sd = ServiceDescriptor.Describe(typeof(ITestInterface), _ => new MyTestInterface(),
+            ServiceLifetime.Transient);
         var configuration = new AspectConfiguration(sd);
         configuration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType);
 

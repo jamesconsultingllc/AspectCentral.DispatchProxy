@@ -7,55 +7,61 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace AspectCentral.DispatchProxy.Tests
+namespace AspectCentral.DispatchProxy.Tests;
+
+/// <summary>
+/// Test service contract used to verify sync, async, and generic method interception.
+/// </summary>
+public interface ITestInterface
 {
     /// <summary>
-    ///     The Interface interface.
+    /// Returns a test value object for the supplied identifier.
     /// </summary>
-    public interface ITestInterface
-    {
-        /// <summary>
-        /// The get class by id.
-        /// </summary>
-        /// <param name="id">
-        /// The id.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        Task<MyUnitTestClass> GetClassByIdAsync(int id);
+    /// <param name="id">
+    /// Identifier copied into the returned test value.
+    /// </param>
+    /// <returns>
+    /// A task that produces a <see cref="MyUnitTestClass" />.
+    /// </returns>
+    Task<MyUnitTestClass> GetClassByIdAsync(int id);
 
-        /// <summary>
-        /// The test.
-        /// </summary>
-        /// <param name="x">
-        /// The x.
-        /// </param>
-        /// <param name="y">
-        /// The y.
-        /// </param>
-        /// <param name="myUnitTestClass">
-        /// The my class.
-        /// </param>
-        void Test(int x, string y, MyUnitTestClass myUnitTestClass);
+    /// <summary>
+    /// Executes a synchronous method used to exercise aspect interception.
+    /// </summary>
+    /// <param name="x">
+    /// Numeric argument captured in invocation-string assertions.
+    /// </param>
+    /// <param name="y">
+    /// String argument captured in invocation-string assertions.
+    /// </param>
+    /// <param name="myUnitTestClass">
+    /// Complex argument captured in invocation-string assertions.
+    /// </param>
+    void Test(int x, string y, MyUnitTestClass myUnitTestClass);
 
-        /// <summary>
-        /// The test async.
-        /// </summary>
-        /// <param name="x">
-        /// The x.
-        /// </param>
-        /// <param name="y">
-        /// The y.
-        /// </param>
-        /// <param name="myUnitTestClass">
-        /// The my class.
-        /// </param>
-        /// <returns>
-        /// The <see cref="Task"/>.
-        /// </returns>
-        Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass);
+    /// <summary>
+    /// Executes an asynchronous method used to exercise aspect interception.
+    /// </summary>
+    /// <param name="x">
+    /// Numeric argument captured in invocation-string assertions.
+    /// </param>
+    /// <param name="y">
+    /// String argument captured in invocation-string assertions.
+    /// </param>
+    /// <param name="myUnitTestClass">
+    /// Complex argument captured in invocation-string assertions.
+    /// </param>
+    /// <returns>
+    /// A task representing the asynchronous test operation.
+    /// </returns>
+    Task TestAsync(int x, string y, MyUnitTestClass myUnitTestClass);
 
-        void GenericTest<T>(int x, T entity, bool enable);
-    }
+    /// <summary>
+    /// Executes a generic method used to verify generic method mapping through the proxy.
+    /// </summary>
+    /// <param name="x">Numeric argument captured in invocation-string assertions.</param>
+    /// <param name="entity">Generic argument captured in invocation-string assertions.</param>
+    /// <param name="enable">Boolean argument captured in invocation-string assertions.</param>
+    /// <typeparam name="T">The generic entity type supplied to the method.</typeparam>
+    void GenericTest<T>(int x, T entity, bool enable);
 }

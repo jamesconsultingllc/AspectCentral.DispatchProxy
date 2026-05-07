@@ -13,31 +13,30 @@ using AspectCentral.Abstractions;
 using Moq;
 using Xunit;
 
-namespace AspectCentral.DispatchProxy.Tests
+namespace AspectCentral.DispatchProxy.Tests;
+
+public class AspectRegistrationBuilderExtensionsTests
 {
-    public class IAspectRegistrationBuilderExtensionsTests
+    private readonly Mock<IAspectRegistrationBuilder> _mockIAspectRegistrationBuilder;
+
+    public AspectRegistrationBuilderExtensionsTests()
     {
-        private readonly Mock<IAspectRegistrationBuilder> mockIAspectRegistrationBuilder;
-        
-        public IAspectRegistrationBuilderExtensionsTests()
-        {
-            mockIAspectRegistrationBuilder = new Mock<IAspectRegistrationBuilder>();
-        }
-        
-        [Fact]
-        public void AddAspectThrowsArgumentNullExceptionWhenAspectRegistrationBuilderIsNull()
-        {
-            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder)!.AddAspectViaFactory<TestAspectFactory>());
-        }
+        _mockIAspectRegistrationBuilder = new Mock<IAspectRegistrationBuilder>();
+    }
 
-        [Fact]
-        public void AddAspectCallsAddAspectWhenArgumentsAreValid()
-        {
-            mockIAspectRegistrationBuilder.Object.AddAspectViaFactory<TestAspectFactory>();
-            mockIAspectRegistrationBuilder.Verify(
-                x => x.AddAspect(TestAspectFactory.Type, null, It.Is<MethodInfo[]>(m => m.Length == 0)),
-                Times.Once);
-        }
+    [Fact]
+    public void AddAspectThrowsArgumentNullExceptionWhenAspectRegistrationBuilderIsNull()
+    {
+        Assert.Throws<ArgumentNullException>(() =>
+            default(IAspectRegistrationBuilder)!.AddAspectViaFactory<TestAspectFactory>());
+    }
 
+    [Fact]
+    public void AddAspectCallsAddAspectWhenArgumentsAreValid()
+    {
+        _mockIAspectRegistrationBuilder.Object.AddAspectViaFactory<TestAspectFactory>();
+        _mockIAspectRegistrationBuilder.Verify(
+            x => x.AddAspect(TestAspectFactory.Type, null, It.Is<MethodInfo[]>(m => m.Length == 0)),
+            Times.Once);
     }
 }

@@ -7,116 +7,119 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-namespace AspectCentral.DispatchProxy.Tests
+namespace AspectCentral.DispatchProxy.Tests;
+
+/// <summary>
+/// Simple value object used by proxy tests as a method parameter and return value.
+/// </summary>
+public class MyUnitTestClass
 {
     /// <summary>
-    ///     The my class.
+    /// Initializes a new instance of the <see cref="MyUnitTestClass" /> class.
     /// </summary>
-    public class MyUnitTestClass
+    /// <param name="x">
+    /// Numeric test value used by equality assertions.
+    /// </param>
+    /// <param name="y">
+    /// String test value used by equality assertions.
+    /// </param>
+    public MyUnitTestClass(int? x, string y)
     {
-        /// <summary>
-        /// Initializes a new instance of the <see cref="MyUnitTestClass"/> class.
-        /// </summary>
-        /// <param name="x">
-        /// The x.
-        /// </param>
-        /// <param name="y">
-        /// The y.
-        /// </param>
-        public MyUnitTestClass(int? x, string y)
+        X = x;
+        Y = y;
+    }
+
+    /// <summary>
+    /// Gets the numeric test value.
+    /// </summary>
+    public int? X { get; }
+
+    /// <summary>
+    /// Gets the string test value.
+    /// </summary>
+    public string Y { get; }
+
+    /// <summary>
+    /// Compares two <see cref="MyUnitTestClass" /> instances for equality.
+    /// </summary>
+    /// <param name="left">
+    /// The left operand.
+    /// </param>
+    /// <param name="right">
+    /// The right operand.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> when both operands are equal; otherwise <see langword="false" />.
+    /// </returns>
+    public static bool operator ==(MyUnitTestClass left, MyUnitTestClass right)
+    {
+        return Equals(left, right);
+    }
+
+    /// <summary>
+    /// Compares two <see cref="MyUnitTestClass" /> instances for inequality.
+    /// </summary>
+    /// <param name="left">
+    /// The left operand.
+    /// </param>
+    /// <param name="right">
+    /// The right operand.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> when the operands are not equal; otherwise <see langword="false" />.
+    /// </returns>
+    public static bool operator !=(MyUnitTestClass left, MyUnitTestClass right)
+    {
+        return !Equals(left, right);
+    }
+
+    /// <summary>
+    /// Determines whether the supplied object represents the same test values.
+    /// </summary>
+    /// <param name="obj">
+    /// The object to compare with this instance.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> when the supplied object is equivalent; otherwise
+    /// <see langword="false" />.
+    /// </returns>
+    public override bool Equals(object? obj)
+    {
+        return ToString().Equals(obj?.ToString());
+    }
+
+    /// <inheritdoc />
+    public override int GetHashCode()
+    {
+        unchecked
         {
-            X = x;
-            Y = y;
+            return (X.GetHashCode() * 397) ^ (Y != null ? Y.GetHashCode() : 0);
         }
+    }
 
-        /// <summary>
-        ///     Gets or sets the x.
-        /// </summary>
-        public int? X { get; }
+    /// <summary>
+    /// Formats the test values into the string representation used by equality comparisons.
+    /// </summary>
+    /// <returns>
+    /// A deterministic string containing the test values.
+    /// </returns>
+    public override string ToString()
+    {
+        return $"X - {X} : Y - testing{Y}3";
+    }
 
-        /// <summary>
-        ///     Gets or sets the y.
-        /// </summary>
-        public string Y { get; }
-
-        /// <summary>
-        ///     The ==.
-        /// </summary>
-        /// <param name="left">
-        ///     The left.
-        /// </param>
-        /// <param name="right">
-        ///     The right.
-        /// </param>
-        /// <returns>
-        /// </returns>
-        public static bool operator ==(MyUnitTestClass left, MyUnitTestClass right)
-        {
-            return Equals(left, right);
-        }
-
-        /// <summary>
-        ///     The !=.
-        /// </summary>
-        /// <param name="left">
-        ///     The left.
-        /// </param>
-        /// <param name="right">
-        ///     The right.
-        /// </param>
-        /// <returns>
-        /// </returns>
-        public static bool operator !=(MyUnitTestClass left, MyUnitTestClass right)
-        {
-            return !Equals(left, right);
-        }
-
-        /// <summary>
-        /// The equals.
-        /// </summary>
-        /// <param name="obj">
-        /// The obj.
-        /// </param>
-        /// <returns>
-        /// The <see cref="bool"/>.
-        /// </returns>
-        public override bool Equals(object? obj)
-        {
-            return ToString().Equals(obj?.ToString());
-        }
-
-        /// <inheritdoc />
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                return (X.GetHashCode() * 397) ^ (Y != null ? Y.GetHashCode() : 0);
-            }
-        }
-
-        /// <summary>
-        ///     The to string.
-        /// </summary>
-        /// <returns>
-        ///     The <see cref="string" />.
-        /// </returns>
-        public override string ToString()
-        {
-            return $"X - {X} : Y - testing{Y}3";
-        }
-
-        /// <summary>
-        /// The equals.
-        /// </summary>
-        /// <param name="other">
-        /// The other.
-        /// </param>
-        /// <returns>
-        /// The <see cref="bool"/>.
-        /// </returns>
-        protected bool Equals(MyUnitTestClass other)
-        {
-            return X == other.X && string.Equals(Y, other.Y);
-        }
+    /// <summary>
+    /// Determines whether another <see cref="MyUnitTestClass" /> has the same values.
+    /// </summary>
+    /// <param name="other">
+    /// The other test value object to compare.
+    /// </param>
+    /// <returns>
+    /// <see langword="true" /> when both value objects contain the same values; otherwise
+    /// <see langword="false" />.
+    /// </returns>
+    protected bool Equals(MyUnitTestClass other)
+    {
+        return X == other.X && string.Equals(Y, other.Y);
     }
 }
