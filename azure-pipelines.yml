@@ -25,7 +25,7 @@ steps:
   inputs:
     packageType: 'sdk'
     version: '10.0.x'
-- task: SonarCloudPrepare@3
+- task: SonarCloudPrepare@3.4.3
   inputs:
     SonarQube: 'Aspect Central'
     organization: 'james-consulting-llc'
@@ -80,8 +80,8 @@ steps:
         --timestamp-url 'http://timestamp.acs.microsoft.com' `
         --timestamp-digest SHA256 `
         '**/*.nupkg'
-- task: SonarCloudAnalyze@3
-- task: SonarCloudPublish@3
+- task: SonarCloudAnalyze@3.4.3
+- task: SonarCloudPublish@3.4.3
   inputs:
     pollingTimeoutSec: '300'
 - task: PublishBuildArtifacts@1
