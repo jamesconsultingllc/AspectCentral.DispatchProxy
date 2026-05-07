@@ -933,7 +933,7 @@ These sections from the shared rules above are **application-level concerns** â€
 
 ## Commands
 
-Build, test, and pack target multiple TFMs (`net5.0;netstandard2.1` for the library; `net5.0;netcoreapp3.1` for tests).
+Build, test, and pack target multiple TFMs (`net9.0;net10.0;netstandard2.1` for the library; `net9.0;net10.0` for tests).
 
 ```sh
 # Restore + build the whole solution
@@ -944,7 +944,7 @@ dotnet build AspectCentral.DispatchProxy.sln --configuration Debug --no-restore
 dotnet test AspectCentral.DispatchProxy.Tests/AspectCentral.DispatchProxy.Tests.csproj
 
 # Run tests for a single framework
-dotnet test AspectCentral.DispatchProxy.Tests/AspectCentral.DispatchProxy.Tests.csproj --framework net5.0
+dotnet test AspectCentral.DispatchProxy.Tests/AspectCentral.DispatchProxy.Tests.csproj --framework net9.0
 
 # Run a single test class or method (xUnit filter)
 dotnet test --filter "FullyQualifiedName~BaseAspectTests"
@@ -954,7 +954,7 @@ dotnet test --filter "FullyQualifiedName=AspectCentral.DispatchProxy.Tests.BaseA
 dotnet pack AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj --configuration Release
 ```
 
-CI (`azure-pipelines.yml`) additionally runs SonarCloud analysis, signs the `.nupkg` with NuGetKeyVaultSignTool, and publishes artifacts. The version is composed from `VersionMajor.VersionMinor.VersionBuild` in the `.csproj`, suffixed with `-local` outside CI and `-$(BUILD_BUILDNUMBER)-preview` for Debug CI builds.
+CI (`azure-pipelines.yml`) additionally runs SonarCloud analysis, signs the `.nupkg` with `dotnet sign` against Azure Artifact Signing (workload-identity federation, no client secrets), and publishes artifacts. The version is composed from `VersionMajor.VersionMinor.VersionBuild` in the `.csproj`, suffixed with `-local` outside CI and `-$(BUILD_BUILDNUMBER)-preview` for Debug CI builds.
 
 ## Architecture
 

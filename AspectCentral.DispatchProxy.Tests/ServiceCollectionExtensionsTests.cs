@@ -80,5 +80,90 @@ namespace AspectCentral.DispatchProxy.Tests
             aspectConfigurationProviderMock.Verify(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
             serviceCollection.BuildServiceProvider().GetService<ITestInterface>().Should().NotBeNull();
         }
+
+        [Fact]
+        public void ConfigureAspectsLeavesOpenGenericDescriptorsUntouched()
+        {
+            // Open generic registrations cannot be safely rewritten to a closed factory descriptor
+            // by ConfigureAspects; they must be left for DI's open-generic resolver to handle.
+            serviceCollection.AddTransient(typeof(IGenericService<>), typeof(GenericService<>));
+            var beforeDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(IGenericService<>));
+
+            serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            var afterDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(IGenericService<>));
+            afterDescriptor.Should().BeSameAs(beforeDescriptor);
+            afterDescriptor.ImplementationType.Should().Be(typeof(GenericService<>));
+            afterDescriptor.ImplementationFactory.Should().BeNull();
+            // Provider should never be queried for an open generic.
+            aspectConfigurationProviderMock.Verify(
+                x => x.GetTypeAspectConfiguration(It.IsAny<Type>(), It.IsAny<Type>()),
+                Times.Never);
+        }
+
+        [Fact]
+        public void ConfigureAspectsLeavesImplementationFactoryDescriptorsUntouched()
+        {
+            // Factory-based registrations are not proxied via the static rewrite path because doing so
+            // safely requires preserving DI ownership/disposal semantics for the factory's product.
+            serviceCollection.AddTransient<ITestInterface>(_ => new MyTestInterface());
+            var beforeDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
+
+            serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            var afterDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
+            afterDescriptor.Should().BeSameAs(beforeDescriptor);
+            afterDescriptor.ImplementationFactory.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void ConfigureAspectsLeavesImplementationInstanceDescriptorsUntouched()
+        {
+            // Instance registrations are externally owned by the caller. Rewriting them to a factory
+            // descriptor would transfer disposal ownership to the DI container, changing behavior.
+            var instance = new MyTestInterface();
+            serviceCollection.AddSingleton<ITestInterface>(instance);
+            var beforeDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
+
+            serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            var afterDescriptor = serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
+            afterDescriptor.Should().BeSameAs(beforeDescriptor);
+            afterDescriptor.ImplementationInstance.Should().BeSameAs(instance);
+        }
+
+        [Fact]
+        public void AddAspectSupportThrowsWhenAdifferentProviderIsAlreadyRegistered()
+        {
+            var firstProvider = new Mock<IAspectConfigurationProvider>().Object;
+            var secondProvider = new Mock<IAspectConfigurationProvider>().Object;
+            serviceCollection.AddSingleton(firstProvider);
+
+            Action act = () => serviceCollection.AddAspectSupport(secondProvider);
+
+            act.Should().Throw<InvalidOperationException>()
+               .WithMessage("*already registered*different instance*");
+        }
+
+        [Fact]
+        public void AddAspectSupportSucceedsWhenSameProviderIsAlreadyRegistered()
+        {
+            serviceCollection.AddSingleton(aspectConfigurationProviderMock.Object);
+
+            Action act = () => serviceCollection.AddAspectSupport(aspectConfigurationProviderMock.Object);
+
+            act.Should().NotThrow();
+            serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
+        }
+    }
+
+    internal interface IGenericService<T>
+    {
+        T Echo(T value);
+    }
+
+    internal class GenericService<T> : IGenericService<T>
+    {
+        public T Echo(T value) => value;
     }
 }

@@ -429,7 +429,8 @@ dotnet pack AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj --con
 ```
 
 CI (`azure-pipelines.yml`) additionally runs SonarCloud analysis, signs the `.nupkg` with
-NuGetKeyVaultSignTool, and publishes artifacts. Local builds get a `-local` suffix; Debug CI
+`dotnet sign` against Azure Artifact Signing (workload-identity federation, no client secrets),
+and publishes artifacts. Local builds get a `-local` suffix; Debug CI
 builds get `-$(BUILD_BUILDNUMBER)-preview`.
 
 ---

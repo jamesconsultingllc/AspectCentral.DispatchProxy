@@ -69,8 +69,12 @@ public class DispatchProxyAspectRegistrationBuilder(IServiceCollection services,
         foreach (var aspect in aspectConfiguration.GetAspects())
         {
             var temp = factory;
-            var interceptorFactory = (IAspectFactory) serviceProvider.GetRequiredService(aspect.AspectType);
-            factory = f => interceptorFactory.Create(temp(serviceProvider), implementationType!);
+            var aspectType = aspect.AspectType;
+            factory = f =>
+            {
+                var interceptorFactory = (IAspectFactory) f.GetRequiredService(aspectType);
+                return interceptorFactory.Create(temp(f), implementationType!);
+            };
         }
 
         return factory(serviceProvider);

@@ -10,6 +10,7 @@
 //  ----------------------------------------------------------------------------------------------------------------------
 
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Reflection;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
@@ -60,8 +61,8 @@ namespace AspectCentral.DispatchProxy;
         /// </remarks>
         public static IAspectRegistrationBuilder AddAspectSupport(this IServiceCollection serviceCollection)
         {
-            var aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
-            serviceCollection.TryAddSingleton<IAspectConfigurationProvider>(aspectConfigurationProvider);
+            if (serviceCollection == null) throw new ArgumentNullException(nameof(serviceCollection));
+            var aspectConfigurationProvider = GetOrAddInMemoryProvider(serviceCollection);
             return new DispatchProxyAspectRegistrationBuilder(serviceCollection.RegisterAspectFactories(),
                 aspectConfigurationProvider);
         }
@@ -86,8 +87,7 @@ namespace AspectCentral.DispatchProxy;
             if (serviceCollection == null) throw new ArgumentNullException(nameof(serviceCollection));
             if (assembliesToScan == null) throw new ArgumentNullException(nameof(assembliesToScan));
 
-            var aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
-            serviceCollection.TryAddSingleton<IAspectConfigurationProvider>(aspectConfigurationProvider);
+            var aspectConfigurationProvider = GetOrAddInMemoryProvider(serviceCollection);
             return new DispatchProxyAspectRegistrationBuilder(
                 serviceCollection.RegisterAspectFactories(assembliesToScan),
                 aspectConfigurationProvider);
@@ -119,41 +119,85 @@ namespace AspectCentral.DispatchProxy;
     {
         if (serviceCollection == null) throw new ArgumentNullException(nameof(serviceCollection));
         if (aspectConfigurationProvider == null) throw new ArgumentNullException(nameof(aspectConfigurationProvider));
-        serviceCollection.TryAddSingleton(aspectConfigurationProvider);
+
+        // Detect provider-mismatch: if a different IAspectConfigurationProvider instance is already
+        // registered, ConfigureAspects would rewrite descriptors using the supplied instance while DI
+        // hands aspect factories the pre-existing one at runtime, leading to silently incorrect interception.
+        var existing = serviceCollection.FirstOrDefault(d =>
+            d.ServiceType == typeof(IAspectConfigurationProvider));
+        if (existing is not null)
+        {
+            if (!ReferenceEquals(existing.ImplementationInstance, aspectConfigurationProvider))
+            {
+                throw new InvalidOperationException(
+                    "An IAspectConfigurationProvider is already registered in the service collection " +
+                    "with a different instance than the one supplied to AddAspectSupport. Remove the " +
+                    "prior registration or call the parameterless AddAspectSupport(IServiceCollection) " +
+                    "fluent overload instead.");
+            }
+        }
+        else
+        {
+            serviceCollection.AddSingleton(aspectConfigurationProvider);
+        }
+
         return serviceCollection.RegisterAspectFactories().ConfigureAspects(aspectConfigurationProvider);
     }
 
     /// <summary>
-    ///     The configure aspects.
+    ///     Rewrites interface→implementation descriptors in the service collection so that resolving the
+    ///     interface yields a <see cref="System.Reflection.DispatchProxy" /> wrapping the concrete
+    ///     implementation with the configured aspects.
     /// </summary>
-    /// <param name="serviceCollection">
-    ///     The service collection.
-    /// </param>
-    /// <param name="aspectConfigurationProvider">
-    ///     The aspect configuration provider.
-    /// </param>
-    /// <returns>
-    ///     The <see cref="IServiceCollection" />.
-    /// </returns>
+    /// <param name="serviceCollection">The service collection to scan and rewrite.</param>
+    /// <param name="aspectConfigurationProvider">Provider supplying aspect configurations per type pair.</param>
+    /// <returns>The same <paramref name="serviceCollection"/> for chaining.</returns>
+    /// <remarks>
+    ///     <para>
+    ///         Only descriptors that satisfy ALL of the following are considered:
+    ///         <list type="bullet">
+    ///             <item><description><c>ServiceType</c> is an interface and is closed (no open generic parameters).</description></item>
+    ///             <item><description>Descriptor is non-keyed.</description></item>
+    ///             <item><description><c>ImplementationType</c> is non-null (i.e. not an instance or factory descriptor).</description></item>
+    ///         </list>
+    ///     </para>
+    ///     <para>
+    ///         Open generics, keyed services, <c>ImplementationInstance</c> registrations, and
+    ///         <c>ImplementationFactory</c> registrations are intentionally left untouched in this rewrite
+    ///         path because proxying them safely requires preserving DI ownership/disposal semantics that
+    ///         a static descriptor swap cannot guarantee. Consumers needing aspects on those registration
+    ///         shapes should use the fluent builder
+    ///         (<see cref="AddAspectSupport(IServiceCollection)"/> + <c>AddAspectViaFactory</c>), whose
+    ///         <see cref="DispatchProxyAspectRegistrationBuilder"/> handles factory descriptors explicitly.
+    ///     </para>
+    ///     <para>
+    ///         The loop captures the original descriptor count before iterating so that descriptors
+    ///         appended during rewrite (the concrete implementation type registration) are not themselves
+    ///         re-evaluated.
+    ///     </para>
+    /// </remarks>
     private static IServiceCollection ConfigureAspects(this IServiceCollection serviceCollection,
         IAspectConfigurationProvider aspectConfigurationProvider)
     {
-        for (var index = 0; index < serviceCollection.Count; index++)
+        var originalCount = serviceCollection.Count;
+        for (var index = 0; index < originalCount; index++)
         {
             var service = serviceCollection[index];
 
-            if (service.ServiceType.IsInterface && service.ImplementationType != null)
-            {
-                var aspectConfiguration =
-                    aspectConfigurationProvider.GetTypeAspectConfiguration(service.ServiceType,
-                        service.ImplementationType);
+            if (!service.ServiceType.IsInterface) continue;
+            if (service.ServiceType.ContainsGenericParameters) continue;
+            if (service.IsKeyedService) continue;
+            if (service.ImplementationType is null) continue;
 
-                if (aspectConfiguration is null) continue;
+            var aspectConfiguration =
+                aspectConfigurationProvider.GetTypeAspectConfiguration(service.ServiceType,
+                    service.ImplementationType);
 
-                serviceCollection.TryAdd(ServiceDescriptor.Describe(service.ImplementationType, service.ImplementationType, service.Lifetime));
-                serviceCollection[index] = new ServiceDescriptor(service.ServiceType,
-                    serviceProvider => InvokeCreateFactory(serviceProvider, aspectConfiguration), service.Lifetime);
-            }
+            if (aspectConfiguration is null) continue;
+
+            serviceCollection.TryAdd(ServiceDescriptor.Describe(service.ImplementationType, service.ImplementationType, service.Lifetime));
+            serviceCollection[index] = new ServiceDescriptor(service.ServiceType,
+                serviceProvider => InvokeCreateFactory(serviceProvider, aspectConfiguration), service.Lifetime);
         }
 
         return serviceCollection;
@@ -185,9 +229,13 @@ namespace AspectCentral.DispatchProxy;
         foreach (var aspect in aspectConfiguration.GetAspects())
         {
             var temp = factory;
-            var interceptorFactory = (IAspectFactory) serviceProvider.GetRequiredService(aspect.AspectType);
-            factory = f => interceptorFactory.Create(temp(serviceProvider),
-                aspectConfiguration.ServiceDescriptor.ImplementationType!);
+            var aspectType = aspect.AspectType;
+            factory = f =>
+            {
+                var interceptorFactory = (IAspectFactory) f.GetRequiredService(aspectType);
+                return interceptorFactory.Create(temp(f),
+                    aspectConfiguration.ServiceDescriptor.ImplementationType!);
+            };
         }
 
         return factory(serviceProvider);
@@ -220,6 +268,38 @@ namespace AspectCentral.DispatchProxy;
         /// </summary>
         private static IServiceCollection RegisterAspectFactories(this IServiceCollection serviceCollection)
             => serviceCollection.RegisterAspectFactories(AppDomain.CurrentDomain.GetAssemblies());
+
+        /// <summary>
+        ///     Returns the already-registered singleton <see cref="IAspectConfigurationProvider"/>
+        ///     instance from <paramref name="serviceCollection"/> if one exists, otherwise registers a
+        ///     new <see cref="InMemoryAspectConfigurationProvider"/> as a singleton instance and returns
+        ///     it. Guarantees that the builder returned by <c>AddAspectSupport</c> writes into the same
+        ///     provider DI will resolve at runtime — closing the prior bug where the builder mutated a
+        ///     fresh provider while DI kept an existing one.
+        /// </summary>
+        /// <exception cref="InvalidOperationException">
+        ///     Thrown when an <see cref="IAspectConfigurationProvider"/> is already registered via a type
+        ///     or factory descriptor (no resolved singleton instance available). Callers in that case
+        ///     should use <see cref="AddAspectSupport(IServiceCollection, IAspectConfigurationProvider)"/>
+        ///     and pass the provider explicitly.
+        /// </exception>
+        private static IAspectConfigurationProvider GetOrAddInMemoryProvider(IServiceCollection serviceCollection)
+        {
+            for (var i = 0; i < serviceCollection.Count; i++)
+            {
+                var d = serviceCollection[i];
+                if (d.ServiceType != typeof(IAspectConfigurationProvider)) continue;
+                if (d.ImplementationInstance is IAspectConfigurationProvider existing) return existing;
+                throw new InvalidOperationException(
+                    "An IAspectConfigurationProvider is already registered without a singleton instance; " +
+                    "the fluent AddAspectSupport overload cannot reuse a type- or factory-registered provider. " +
+                    "Use AddAspectSupport(IServiceCollection, IAspectConfigurationProvider) instead and pass the provider explicitly.");
+            }
+
+            var provider = new InMemoryAspectConfigurationProvider();
+            serviceCollection.AddSingleton<IAspectConfigurationProvider>(provider);
+            return provider;
+        }
 
         /// <summary>
         ///     Scans the supplied assemblies for concrete <see cref="IAspectFactory"/> implementations and
@@ -257,3 +337,5 @@ namespace AspectCentral.DispatchProxy;
             return serviceCollection;
         }
 }
+
+
