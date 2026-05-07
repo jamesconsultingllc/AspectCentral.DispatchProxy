@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: [develop, main, master, 'feature/**', 'release/**', 'hotfix/**']
+  pull_request:
+    branches: [develop, main, master]
+  workflow_dispatch:
+
+# Cancel superseded runs on the same ref
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  build:
+    name: Build, Test, Analyze
+    runs-on: ubuntu-latest
+
+    env:
+      PACKAGE_PROJECT: AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj
+      SOLUTION: AspectCentral.DispatchProxy.sln
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # Sonar requires full history for accurate blame/new-code detection
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Setup Java (Sonar scanner requires JRE)
+        if: ${{ vars.SONAR_PROJECT_KEY != '' }}
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Restore
+        run: dotnet restore $SOLUTION
+
+      - name: Install Sonar scanner
+        if: ${{ vars.SONAR_PROJECT_KEY != '' }}
+        run: dotnet tool install --global dotnet-sonarscanner
+
+      - name: Begin Sonar analysis
+        if: ${{ vars.SONAR_PROJECT_KEY != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: |
+          dotnet sonarscanner begin \
+            /k:"${{ vars.SONAR_PROJECT_KEY }}" \
+            /o:"${{ vars.SONAR_ORG }}" \
+            /d:sonar.host.url="https://sonarcloud.io" \
+            /d:sonar.token="$SONAR_TOKEN" \
+            /d:sonar.cs.opencover.reportsPaths="**/coverage.opencover.xml" \
+            /d:sonar.coverage.exclusions="**/*Tests/**,**/*.Tests/**"
+
+      - name: Build
+        env:
+          CI: 'true'  # activates ContinuousIntegrationBuild for deterministic source paths
+        run: dotnet build $SOLUTION --configuration Release --no-restore
+
+      - name: Test (with coverage)
+        run: |
+          dotnet test $SOLUTION \
+            --configuration Release \
+            --no-build \
+            --logger "trx;LogFileName=test-results.trx" \
+            --collect:"XPlat Code Coverage" \
+            -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+      - name: End Sonar analysis
+        if: ${{ vars.SONAR_PROJECT_KEY != '' }}
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: dotnet sonarscanner end /d:sonar.token="$SONAR_TOKEN"
+
+      - name: Pack (preview, for artifact only)
+        # CI-version suffix so consumers cannot accidentally consume an unpublished build.
+        # publish.yml does the real packing for release/tag flows.
+        run: |
+          dotnet pack $PACKAGE_PROJECT \
+            --configuration Release \
+            --no-build \
+            --output ./artifacts \
+            -p:VersionSuffix="ci.${{ github.run_number }}"
+
+      - name: Upload nupkg artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nupkg-${{ github.run_number }}
+          path: ./artifacts/*.nupkg
+          retention-days: 14
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-${{ github.run_number }}
+          path: '**/TestResults/**/*.trx'
+          retention-days: 7

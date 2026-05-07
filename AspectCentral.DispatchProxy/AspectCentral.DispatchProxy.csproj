@@ -34,16 +34,16 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <PropertyGroup>
-        <VersionMajor>2</VersionMajor>
-        <VersionMinor>0</VersionMinor>
-        <VersionBuild>0</VersionBuild>
+        <!--
+          Stable version. CI workflows override via -p:Version=... :
+          - publish.yml RC:     <prefix>-rc.<run_number>  (e.g. 2.0.0-rc.42)
+          - publish.yml stable: derived from `v*` git tag, must match this prefix
+          - ci.yml preview:     <prefix>-ci.<run_number>  (artifact only, never pushed)
+          Bump VersionPrefix as part of release prep on a release/* branch.
+        -->
+        <VersionPrefix>2.0.0</VersionPrefix>
     </PropertyGroup>
 
-    <PropertyGroup>
-        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' == '' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)-local</VersionPrefix>
-        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' == 'Debug' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)-$(BUILD_BUILDNUMBER)-preview</VersionPrefix>
-        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' != 'Debug' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)</VersionPrefix>
-    </PropertyGroup>
     <ItemGroup>
         <None Include="../README.md" Pack="true" PackagePath="/"/>
     </ItemGroup>
