@@ -7,8 +7,6 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-using System;
-using System.Linq;
 using AspectCentral.Abstractions;
 using AspectCentral.DispatchProxy.Logging;
 using Microsoft.Extensions.DependencyInjection;

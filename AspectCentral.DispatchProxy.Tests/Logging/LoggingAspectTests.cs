@@ -7,8 +7,6 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-using System;
-using System.Threading.Tasks;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using Microsoft.Extensions.DependencyInjection;
@@ -66,6 +64,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
             aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
             aspectConfigurationProvider.AddEntry(aspectConfiguration);
             loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName)).Returns(logger.Object);
+            logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             instance = LoggingAspect<ITestInterface>.Create(
                 new MyTestInterface(),
                 typeof(MyTestInterface),

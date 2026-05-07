@@ -8,7 +8,6 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
-using System;
 using AspectCentral.Abstractions.Configuration;
 using Microsoft.Extensions.Logging;
 

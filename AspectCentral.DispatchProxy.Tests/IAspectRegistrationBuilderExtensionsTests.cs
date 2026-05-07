@@ -8,7 +8,6 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
-using System;
 using System.Reflection;
 using AspectCentral.Abstractions;
 using Moq;

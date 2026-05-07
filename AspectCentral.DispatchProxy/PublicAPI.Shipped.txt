@@ -1,0 +1,68 @@
+#nullable enable
+abstract AspectCentral.DispatchProxy.BaseAspectFactory.Create<T>(T instance, System.Type! implementationType) -> T
+AspectCentral.DispatchProxy.BaseAspect<T>
+AspectCentral.DispatchProxy.BaseAspect<T>.AspectConfigurationProvider.get -> AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider!
+AspectCentral.DispatchProxy.BaseAspect<T>.AspectConfigurationProvider.set -> void
+AspectCentral.DispatchProxy.BaseAspect<T>.BaseAspect() -> void
+AspectCentral.DispatchProxy.BaseAspect<T>.FactoryType.get -> System.Type!
+AspectCentral.DispatchProxy.BaseAspect<T>.FactoryType.set -> void
+AspectCentral.DispatchProxy.BaseAspect<T>.Instance.get -> T
+AspectCentral.DispatchProxy.BaseAspect<T>.Instance.set -> void
+AspectCentral.DispatchProxy.BaseAspect<T>.Logger.get -> Microsoft.Extensions.Logging.ILogger!
+AspectCentral.DispatchProxy.BaseAspect<T>.Logger.set -> void
+AspectCentral.DispatchProxy.BaseAspect<T>.ObjectType.get -> System.Type!
+AspectCentral.DispatchProxy.BaseAspect<T>.ObjectType.set -> void
+AspectCentral.DispatchProxy.BaseAspectFactory
+AspectCentral.DispatchProxy.BaseAspectFactory.BaseAspectFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider) -> void
+AspectCentral.DispatchProxy.Constants
+AspectCentral.DispatchProxy.DispatchProxyAspectRegistrationBuilder
+AspectCentral.DispatchProxy.DispatchProxyAspectRegistrationBuilder.DispatchProxyAspectRegistrationBuilder(Microsoft.Extensions.DependencyInjection.IServiceCollection! services, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider) -> void
+AspectCentral.DispatchProxy.IAspectFactory
+AspectCentral.DispatchProxy.IAspectFactory.Create<T>(T instance, System.Type! implementationType) -> T
+AspectCentral.DispatchProxy.IAspectRegistrationBuilderExtensions
+AspectCentral.DispatchProxy.Logging.LoggingAspect<T>
+AspectCentral.DispatchProxy.Logging.LoggingAspect<T>.LoggingAspect() -> void
+AspectCentral.DispatchProxy.Logging.LoggingAspectFactory
+AspectCentral.DispatchProxy.Logging.LoggingAspectFactory.LoggingAspectFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider) -> void
+AspectCentral.DispatchProxy.Logging.LoggingAspectRegistrationBuilderExtensions
+AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>
+AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>.ProfilingAspect() -> void
+AspectCentral.DispatchProxy.Profiling.ProfilingAspectFactory
+AspectCentral.DispatchProxy.Profiling.ProfilingAspectFactory.ProfilingAspectFactory(Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider) -> void
+AspectCentral.DispatchProxy.Profiling.ProfilingAspectRegistrationBuilderExtensions
+AspectCentral.DispatchProxy.ServiceCollectionExtensions
+AspectCentral.DispatchProxy.Telemetry.LibraryActivitySources
+AspectCentral.DispatchProxy.Telemetry.LibraryMeters
+const AspectCentral.DispatchProxy.Telemetry.LibraryActivitySources.Aspects = "AspectCentral.DispatchProxy.Aspects" -> string!
+const AspectCentral.DispatchProxy.Telemetry.LibraryMeters.Aspects = "AspectCentral.DispatchProxy.Aspects" -> string!
+override AspectCentral.DispatchProxy.BaseAspect<T>.Invoke(System.Reflection.MethodInfo? targetMethod, object?[]? args) -> object?
+override AspectCentral.DispatchProxy.DispatchProxyAspectRegistrationBuilder.InvokeCreateFactory(System.IServiceProvider! serviceProvider, AspectCentral.Abstractions.Configuration.AspectConfiguration! aspectConfiguration) -> object!
+override AspectCentral.DispatchProxy.DispatchProxyAspectRegistrationBuilder.ValidateAddAspect(System.Type! aspectType) -> void
+override AspectCentral.DispatchProxy.Logging.LoggingAspect<T>.PostInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+override AspectCentral.DispatchProxy.Logging.LoggingAspect<T>.PreInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+override AspectCentral.DispatchProxy.Logging.LoggingAspectFactory.Create<T>(T instance, System.Type! implementationType) -> T
+override AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>.PostInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+override AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>.PreInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+override AspectCentral.DispatchProxy.Profiling.ProfilingAspectFactory.Create<T>(T instance, System.Type! implementationType) -> T
+readonly AspectCentral.DispatchProxy.BaseAspectFactory.AspectConfigurationProvider -> AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider!
+readonly AspectCentral.DispatchProxy.BaseAspectFactory.LoggerFactory -> Microsoft.Extensions.Logging.ILoggerFactory!
+static AspectCentral.DispatchProxy.IAspectRegistrationBuilderExtensions.AddAspectViaFactory<T>(this AspectCentral.Abstractions.IAspectRegistrationBuilder! aspectRegistrationBuilder, int? sortOrder = null, params System.Reflection.MethodInfo![]! methodsToIntercept) -> AspectCentral.Abstractions.IAspectRegistrationBuilder!
+static AspectCentral.DispatchProxy.Logging.LoggingAspect<T>.Create(T instance, System.Type! type, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider, System.Type! loggingAspectFactoryType) -> T
+static AspectCentral.DispatchProxy.Logging.LoggingAspectRegistrationBuilderExtensions.AddLoggingAspect(this AspectCentral.Abstractions.IAspectRegistrationBuilder! aspectRegistrationBuilder, params System.Reflection.MethodInfo![]! methodsToIntercept) -> AspectCentral.Abstractions.IAspectRegistrationBuilder!
+static AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>.Create(T instance, System.Type! type, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider, System.Type! profilingAspectFactoryType) -> T
+static AspectCentral.DispatchProxy.Profiling.ProfilingAspectRegistrationBuilderExtensions.AddProfilingAspect(this AspectCentral.Abstractions.IAspectRegistrationBuilder! aspectRegistrationBuilder, params System.Reflection.MethodInfo![]! methodsToIntercept) -> AspectCentral.Abstractions.IAspectRegistrationBuilder!
+static AspectCentral.DispatchProxy.ServiceCollectionExtensions.AddAspectSupport(this Microsoft.Extensions.DependencyInjection.IServiceCollection! serviceCollection, AspectCentral.Abstractions.Configuration.IAspectConfigurationProvider! aspectConfigurationProvider) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static AspectCentral.DispatchProxy.ServiceCollectionExtensions.AddAspectSupport(this Microsoft.Extensions.DependencyInjection.IServiceCollection! serviceCollection, params System.Reflection.Assembly![]! assembliesToScan) -> AspectCentral.Abstractions.IAspectRegistrationBuilder!
+static AspectCentral.DispatchProxy.ServiceCollectionExtensions.AddAspectSupport(this Microsoft.Extensions.DependencyInjection.IServiceCollection! serviceCollection) -> AspectCentral.Abstractions.IAspectRegistrationBuilder!
+static readonly AspectCentral.DispatchProxy.Constants.IAspectFactoryType -> System.Type!
+static readonly AspectCentral.DispatchProxy.Logging.LoggingAspect<T>.Type -> System.Type!
+static readonly AspectCentral.DispatchProxy.Logging.LoggingAspectFactory.LoggingAspectFactoryType -> System.Type!
+static readonly AspectCentral.DispatchProxy.Profiling.ProfilingAspect<T>.Type -> System.Type!
+static readonly AspectCentral.DispatchProxy.Profiling.ProfilingAspectFactory.ProfilingAspectFactoryType -> System.Type!
+static readonly AspectCentral.DispatchProxy.Telemetry.LibraryActivitySources.All -> System.Collections.Generic.IReadOnlyList<string!>!
+static readonly AspectCentral.DispatchProxy.Telemetry.LibraryMeters.All -> System.Collections.Generic.IReadOnlyList<string!>!
+virtual AspectCentral.DispatchProxy.BaseAspect<T>.GenerateAspectContext(System.Reflection.MethodInfo! targetMethod, object![]! args) -> AspectCentral.Abstractions.AspectContext!
+virtual AspectCentral.DispatchProxy.BaseAspect<T>.GenerateMethodNameWithArguments(System.Reflection.MethodInfo! targetMethod, object![]! args, out System.Reflection.MethodInfo! implementationMethod) -> string!
+virtual AspectCentral.DispatchProxy.BaseAspect<T>.PostInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+virtual AspectCentral.DispatchProxy.BaseAspect<T>.PreInvoke(AspectCentral.Abstractions.AspectContext! aspectContext) -> void
+virtual AspectCentral.DispatchProxy.BaseAspect<T>.ShouldIntercept(AspectCentral.Abstractions.AspectContext! aspectContext) -> bool

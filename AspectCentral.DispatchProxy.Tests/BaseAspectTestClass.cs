@@ -8,11 +8,12 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
-using System;
 using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
 using JamesConsulting.Threading;
 using Microsoft.Extensions.Logging;
+
+#nullable enable annotations
 
 namespace AspectCentral.DispatchProxy.Tests
 {

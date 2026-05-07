@@ -8,8 +8,6 @@
 //  </summary>
 //  ----------------------------------------------------------------------------------------------------------------------
 
-using System;
-using System.Linq;
 using AspectCentral.Abstractions.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;

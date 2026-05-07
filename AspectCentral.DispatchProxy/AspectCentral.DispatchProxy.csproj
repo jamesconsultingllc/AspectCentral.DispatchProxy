@@ -1,24 +1,38 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
+        <PackageId>AspectCentral.DispatchProxy</PackageId>
         <Company>James Consulting LLC</Company>
         <Authors>Rudy James</Authors>
+        <Description>Aspect-oriented programming for Microsoft.Extensions.DependencyInjection built on System.Reflection.DispatchProxy. Wrap registered services with logging, profiling, or custom aspects without changing call sites; consumers configure their own logging sinks and OpenTelemetry exporters.</Description>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
         <Copyright>Copyright © 2019</Copyright>
         <PackageTags>AOP, aspect oriented programming, interceptors, DispatchProxy</PackageTags>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <LangVersion>latest</LangVersion>
         <ProjectGuid>5112A87D-F8F2-43A5-B566-9F104BC83954</ProjectGuid>
-        <TargetFrameworks>net5.0;netstandard2.1</TargetFrameworks>
+        <TargetFrameworks>net9.0;net10.0;netstandard2.1</TargetFrameworks>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <NoWarn>$(NoWarn);NU1902</NoWarn>
         <Nullable>enable</Nullable>
         <Title>AspectCentral.DispatchProxy</Title>
         <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>
         <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
     </PropertyGroup>
     <PropertyGroup>
-        <VersionMajor>1</VersionMajor>
+        <VersionMajor>2</VersionMajor>
         <VersionMinor>0</VersionMinor>
-        <VersionBuild>1</VersionBuild>
+        <VersionBuild>0</VersionBuild>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -27,8 +41,22 @@
         <VersionPrefix Condition=" '$(Configuration)' != 'Debug'">$(VersionMajor).$(VersionMinor).$(VersionBuild)</VersionPrefix>
     </PropertyGroup>
     <ItemGroup>
+        <None Include="../README.md" Pack="true" PackagePath="/" />
+    </ItemGroup>
+    <ItemGroup>
         <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2" />
         <PackageReference Include="JamesConsulting" Version="1.0.1" />
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="5.0.0" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2" />
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.2" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" />
+        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+        <AdditionalFiles Include="PublicAPI.Shipped.txt" />
+        <AdditionalFiles Include="PublicAPI.Unshipped.txt" />
     </ItemGroup>
 </Project>

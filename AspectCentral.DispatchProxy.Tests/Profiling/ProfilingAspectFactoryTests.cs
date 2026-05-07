@@ -1,4 +1,3 @@
-using System;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Profiling;
 using FluentAssertions;

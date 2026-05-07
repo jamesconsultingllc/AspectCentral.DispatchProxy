@@ -7,8 +7,6 @@
 // </summary>
 // --------------------------------------------------------------------------------------------------------------------
 
-using System.Threading.Tasks;
-
 namespace AspectCentral.DispatchProxy.Tests
 {
     /// <summary>
