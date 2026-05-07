@@ -29,7 +29,7 @@ public static class ServiceCollectionExtensions
     /// used to construct the aspect chain at service-resolution time.
     /// </summary>
     private static readonly MethodInfo CreateFactoryMethodInfo =
-        typeof(ServiceCollectionExtensions).GetMethod("CreateFactory",
+        typeof(ServiceCollectionExtensions).GetMethod(nameof(CreateFactory),
             BindingFlags.Static | BindingFlags.NonPublic)!;
 
     /// <summary>
@@ -142,6 +142,18 @@ public static class ServiceCollectionExtensions
             d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService);
         if (existing is not null)
         {
+            if (existing.ImplementationInstance is null)
+            {
+                // Type or factory registration — we have no instance to compare against, and rewriting
+                // it would silently swap the provider seen at runtime. Force the caller to disambiguate.
+                throw new InvalidOperationException(
+                    "An IAspectConfigurationProvider is already registered in the service collection " +
+                    "via an implementation type or factory (no concrete instance available to compare). " +
+                    "Remove the prior registration before calling AddAspectSupport with an explicit " +
+                    "instance, or call the parameterless AddAspectSupport(IServiceCollection) fluent " +
+                    "overload instead.");
+            }
+
             if (!ReferenceEquals(existing.ImplementationInstance, aspectConfigurationProvider))
                 throw new InvalidOperationException(
                     "An IAspectConfigurationProvider is already registered in the service collection " +

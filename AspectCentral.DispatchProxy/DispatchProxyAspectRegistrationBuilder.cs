@@ -21,7 +21,7 @@ public class DispatchProxyAspectRegistrationBuilder(
     /// proxy instances after aspects have been registered fluently.
     /// </summary>
     private static readonly MethodInfo CreateFactoryMethodInfo =
-        typeof(DispatchProxyAspectRegistrationBuilder).GetMethod("CreateFactory",
+        typeof(DispatchProxyAspectRegistrationBuilder).GetMethod(nameof(CreateFactory),
             BindingFlags.Static | BindingFlags.NonPublic)!;
 
     /// <inheritdoc />

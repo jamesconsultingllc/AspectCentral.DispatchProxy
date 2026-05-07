@@ -93,7 +93,7 @@ public class MyUnitTestClass
     {
         unchecked
         {
-            return (X.GetHashCode() * 397) ^ (Y != null ? Y.GetHashCode() : 0);
+            return ((X?.GetHashCode() ?? 0) * 397) ^ Y.GetHashCode();
         }
     }
 

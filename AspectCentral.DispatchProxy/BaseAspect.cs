@@ -241,9 +241,29 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                 {
                     AspectLogs.InvokingWithInterception(Logger, aspectContext.InvocationString ?? "Unknown");
                     Invoke(aspectContext);
+                    // For async methods, PostInvoke is wired into the task continuation by
+                    // ProcessAction / CallProcessFunction (via BaseAspectAsyncProcessor). For sync
+                    // methods, PostInvoke must be invoked here.
+                    if (!isAsync) PostInvoke(aspectContext);
                 }
-
-                if (!isAsync) PostInvoke(aspectContext);
+                else if (isAsync && aspectContext.ReturnValue is Task shortCircuitTask)
+                {
+                    // Async short-circuit: the aspect supplied a Task return value without invoking
+                    // the target. Attach PostInvoke to the supplied task so cleanup still runs,
+                    // matching the synchronous short-circuit contract below.
+                    var ctx = aspectContext;
+                    shortCircuitTask.ContinueWith(
+                        _ => PostInvoke(ctx),
+                        CancellationToken.None,
+                        TaskContinuationOptions.ExecuteSynchronously,
+                        TaskScheduler.Default);
+                }
+                else
+                {
+                    // Sync short-circuit, or async short-circuit with no Task supplied. Run PostInvoke
+                    // immediately so aspects can reliably perform cleanup.
+                    PostInvoke(aspectContext);
+                }
             }
             else
             {
