@@ -10,8 +10,9 @@ pool:
   vmImage: 'windows-latest'
 
 variables:
-  buildConfiguration: 'Release'
-  Version: '2.0.0'   # override per-build by setting the Version pipeline variable in the ADO UI
+  - group: 'Code Signing'   # provides Version (and historically ApplicationId/ClientSecret — now unused)
+  - name: buildConfiguration
+    value: 'Release'
 
 steps:
 - task: SonarCloudPrepare@1
