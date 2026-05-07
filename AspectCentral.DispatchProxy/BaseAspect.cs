@@ -177,11 +177,26 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             ? targetMethod.GetGenericMethodDefinition()
             : targetMethod;
 
-        var methodMap = BaseAspectMethodMapCache.GetOrAdd(ObjectType, interfaceType);
-        if (!methodMap.TryGetValue(lookupKey, out var resolved))
+        // Guard against non-interface declaring types (e.g. Object methods like ToString/Equals/
+        // GetHashCode that some DispatchProxy hosts may route through Invoke) and against
+        // implementations that do not implement the declaring interface. GetInterfaceMap throws
+        // ArgumentException in both cases, so fall through to the public-methods ToString-based
+        // lookup below in those scenarios.
+        var canUseInterfaceMap = interfaceType.IsInterface
+                                 && interfaceType.IsAssignableFrom(ObjectType);
+
+        MethodInfo? resolved = null;
+        if (canUseInterfaceMap)
+        {
+            var methodMap = BaseAspectMethodMapCache.GetOrAdd(ObjectType, interfaceType);
+            methodMap.TryGetValue(lookupKey, out resolved);
+        }
+
+        if (resolved == null)
         {
             // Fall back to the legacy ToString-based lookup against the public methods cache for any
-            // edge case GetInterfaceMap does not cover (e.g. proxied class with no explicit interface).
+            // edge case GetInterfaceMap does not cover (e.g. proxied class with no explicit interface,
+            // or Object-declared methods routed through the proxy).
             if (!JamesConsulting.Constants.TypeMethods.ContainsKey(ObjectType))
             {
                 AspectLogs.AddedMethodsToCache(Logger, ObjectType.FullName ?? ObjectType.Name);
@@ -190,7 +205,8 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
 
             var methodName = lookupKey.ToString();
             resolved = JamesConsulting.Constants.TypeMethods[ObjectType]
-                .Single(x => x.ToString() == methodName);
+                .FirstOrDefault(x => x.ToString() == methodName)
+                ?? lookupKey;
         }
 
         implementationMethod = targetMethod.IsGenericMethod

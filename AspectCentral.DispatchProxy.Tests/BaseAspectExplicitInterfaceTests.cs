@@ -72,6 +72,22 @@ public class BaseAspectExplicitInterfaceTests
         Assert.Equal("Hidden", impl.Name.Split('.')[^1]);
     }
 
+    [Fact]
+    public void Resolves_ObjectMethod_DoesNotThrow()
+    {
+        // System.Object methods (ToString, GetHashCode, Equals) have DeclaringType==typeof(object)
+        // which is not an interface. GetInterfaceMap throws ArgumentException for non-interfaces,
+        // so the resolver must guard against that and fall back to the public-methods lookup
+        // without crashing.
+        var aspect = CreateAspect();
+        var target = typeof(object).GetMethod(nameof(object.ToString))!;
+
+        var invocation = aspect.GenerateMethodNameWithArguments(target, Array.Empty<object>(), out var impl);
+
+        Assert.NotNull(impl);
+        Assert.Contains("ToString", invocation);
+    }
+
     public interface IExplicit
     {
         int Add(int x, int y);
