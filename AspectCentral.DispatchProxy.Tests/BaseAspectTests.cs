@@ -72,7 +72,7 @@ public class BaseAspectTests
         // real method is never called. Async + InvokeMethod=false: PreInvoke runs (1 log "Setting
         // result"); the supplied Task<TResult> short-circuit continuation unwraps the awaited
         // value into AspectContext.ReturnValue (matching the normal Task<TResult> path) and runs
-        // PostInvoke (1 log "Should not be invoked"). Total: 2 log calls.
+        // PostInvoke (1 log "PostInvoke ran after short-circuited async completion"). Total: 2 log calls.
         BaseAspectTestClass<ITestInterface>.LastObservedReturnValueType = null;
         var result = await _instance.GetClassByIdAsync(12);
         _logger.Verify(

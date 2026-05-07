@@ -62,7 +62,10 @@ public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
     public static Type? LastObservedReturnValueType { get; set; }
 
     /// <summary>
-    /// Logs when post-invocation logic unexpectedly runs for this short-circuiting test aspect.
+    /// Records the type observed in <see cref="AspectContext.ReturnValue"/> after the
+    /// short-circuited async path completes. This is the proof-point for the test:
+    /// the proxy must hand <see cref="PostInvoke"/> the unwrapped TResult, not the
+    /// outer Task that was placed on ReturnValue in <see cref="PreInvoke"/>.
     /// </summary>
     /// <param name="aspectContext">
     /// The invocation context for the completed method call.
@@ -70,7 +73,7 @@ public class BaseAspectTestClass<T> : BaseAspect<T> where T : class?
     public override void PostInvoke(AspectContext aspectContext)
     {
         LastObservedReturnValueType = aspectContext.ReturnValue?.GetType();
-        Logger.LogInformation("Should not be invoked");
+        Logger.LogInformation("PostInvoke ran after short-circuited async completion");
     }
 
     /// <summary>

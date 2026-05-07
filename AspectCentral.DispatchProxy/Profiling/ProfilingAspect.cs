@@ -86,9 +86,18 @@ public class ProfilingAspect<T> : BaseAspect<T> where T : class?
     {
         var sw = _stopWatch.Value;
         if (sw == null) return;
-        sw.Stop();
-        var ts = sw.Elapsed;
-        AspectLogs.ProfilingAspectEnd(Logger, ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+        try
+        {
+            sw.Stop();
+            var ts = sw.Elapsed;
+            AspectLogs.ProfilingAspectEnd(Logger, ts.Hours, ts.Minutes, ts.Seconds, ts.Milliseconds);
+        }
+        finally
+        {
+            // Clear the AsyncLocal slot so the Stopwatch instance does not stay
+            // anchored to the captured ExecutionContext after the call returns.
+            _stopWatch.Value = null;
+        }
     }
 
     /// <summary>
