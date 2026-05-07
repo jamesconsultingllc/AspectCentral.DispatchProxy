@@ -1,0 +1,46 @@
+<Project>
+
+    <!--
+      Repo-wide MSBuild defaults.
+      Auto-computes the copyright year range from CopyrightStartYear to CopyrightCurrentYear.
+      If the start year equals the current year, a single year is emitted (e.g. "2026")
+      instead of a degenerate range (e.g. "2026-2026").
+
+      CopyrightCurrentYear is hardcoded (not derived from System.DateTime.UtcNow.Year)
+      so that rebuilds of the same commit produce identical assembly/package metadata.
+      Reading the year from the system clock at build time would change the embedded
+      copyright string each calendar year and undermine the repo-wide Deterministic=true /
+      ContinuousIntegrationBuild settings. Bump this value intentionally as part of an
+      annual chore commit instead. CI may still override it via the
+      COPYRIGHT_CURRENT_YEAR environment variable when a deterministic, externally
+      supplied value is required.
+    -->
+    <PropertyGroup>
+        <Company>James Consulting LLC</Company>
+        <Authors>Rudy James</Authors>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <Deterministic>true</Deterministic>
+        <ContinuousIntegrationBuild Condition="'$(CI)' == 'true'">true</ContinuousIntegrationBuild>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <CopyrightStartYear>2019</CopyrightStartYear>
+        <CopyrightOwner>$(Company)</CopyrightOwner>
+        <!--
+            Hardcoded for deterministic builds. CI can override via the
+            COPYRIGHT_CURRENT_YEAR env var without editing this file.
+        -->
+        <CopyrightCurrentYear Condition=" '$(COPYRIGHT_CURRENT_YEAR)' != '' ">$(COPYRIGHT_CURRENT_YEAR)</CopyrightCurrentYear>
+        <CopyrightCurrentYear Condition=" '$(CopyrightCurrentYear)' == '' ">2026</CopyrightCurrentYear>
+        <CopyrightYearRange Condition=" '$(CopyrightStartYear)' == '$(CopyrightCurrentYear)' ">$(CopyrightStartYear)</CopyrightYearRange>
+        <CopyrightYearRange Condition=" '$(CopyrightYearRange)' == '' ">$(CopyrightStartYear)-$(CopyrightCurrentYear)</CopyrightYearRange>
+        <Copyright>Copyright © $(CopyrightYearRange) $(CopyrightOwner)</Copyright>
+    </PropertyGroup>
+
+</Project>

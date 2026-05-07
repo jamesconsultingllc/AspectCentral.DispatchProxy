@@ -1,0 +1,92 @@
+# Build, test, sign, and publish AspectCentral.DispatchProxy.
+# Signing uses Azure Artifact Signing (formerly Trusted Signing) via workload-identity
+# federation — no client secrets. See docs/azure-artifact-signing-setup.md in
+# gh-misc-tools for the full setup walkthrough.
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  - group: 'Code Signing'   # provides Version (and historically ApplicationId/ClientSecret — now unused)
+  - name: buildConfiguration
+    value: 'Release'
+
+steps:
+- task: UseDotNet@2
+  displayName: 'Install .NET 9 SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '9.0.x'
+- task: UseDotNet@2
+  displayName: 'Install .NET 10 SDK'
+  inputs:
+    packageType: 'sdk'
+    version: '10.0.x'
+- task: SonarCloudPrepare@3.4.3
+  inputs:
+    SonarQube: 'Aspect Central'
+    organization: 'james-consulting-llc'
+    scannerMode: 'dotnet'
+    projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
+    projectVersion: '$(Version)'
+- task: DotNetCoreCLI@2
+  inputs:
+    command: 'restore'
+    feedsToUse: 'select'    
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet build'
+  env:
+    CI: 'true'   # activates ContinuousIntegrationBuild for deterministic, normalized source paths
+  inputs:
+    command: 'build'
+    projects: 'AspectCentral.DispatchProxy.sln'
+    arguments: '--configuration $(buildConfiguration) --no-restore'
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet test'
+  inputs:
+    command: test
+    projects: '**/*.Tests/*.csproj'
+    arguments: '--configuration $(buildConfiguration) --collect "Code coverage"'
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet pack'
+  inputs:
+    command: 'pack'
+    packagesToPack: '**/AspectCentral.DispatchProxy.csproj'
+    packDirectory: '$(Build.ArtifactStagingDirectory)/packages'
+    nobuild: true
+    versioningScheme: 'byEnvVar'
+    versionEnvVar: Version
+    arguments: '--configuration $(buildConfiguration)'
+- task: AzureCLI@2
+  displayName: 'Sign nupkg with Azure Artifact Signing (dotnet sign)'
+  inputs:
+    azureSubscription: 'jc-azure-signing'
+    scriptType: 'pscore'
+    scriptLocation: 'inlineScript'
+    addSpnToEnvironment: true
+    inlineScript: |
+      $ErrorActionPreference = 'Stop'
+      dotnet tool install --global sign --version 0.9.1-beta.24469.1
+      $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+      sign code trusted-signing `
+        --trusted-signing-endpoint 'https://wcus.codesigning.azure.net/' `
+        --trusted-signing-account 'jc-ts-account' `
+        --trusted-signing-certificate-profile 'Code-Signing' `
+        --base-directory '$(Build.ArtifactStagingDirectory)/packages' `
+        --file-digest SHA256 `
+        --timestamp-url 'http://timestamp.acs.microsoft.com' `
+        --timestamp-digest SHA256 `
+        '**/*.nupkg'
+- task: SonarCloudAnalyze@3.4.3
+- task: SonarCloudPublish@3.4.3
+  inputs:
+    pollingTimeoutSec: '300'
+- task: PublishBuildArtifacts@1
+  displayName: 'Publish Artifact: drop'
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)/packages'
+    ArtifactName: 'drop'
+

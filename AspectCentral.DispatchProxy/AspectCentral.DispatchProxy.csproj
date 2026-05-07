@@ -1,23 +1,68 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <TargetFramework>netcoreapp2.2</TargetFramework>
-    <Version>1.0.0-alpha</Version>
-    <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
-    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
-    <Company>James Consulting LLC</Company>
-    <Authors>Rudy James</Authors>
-    <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
-    <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects/2</PackageProjectUrl>
-    <PackageLicenseUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/blob/master/LICENSE</PackageLicenseUrl>
-    <Copyright>Copyright © 2019. All rights reserved.</Copyright>
-    <PackageTags>AOP, DispatchProxy, aspect oriented programming</PackageTags>
-  </PropertyGroup>
+    <PropertyGroup>
+        <PackageId>AspectCentral.DispatchProxy</PackageId>
+        <Description>Aspect-oriented programming for Microsoft.Extensions.DependencyInjection built on System.Reflection.DispatchProxy. Wrap registered services with logging, profiling, or custom aspects without changing call sites; consumers configure their own logging sinks and OpenTelemetry exporters.</Description>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <PackageTags>AOP, aspect oriented programming, interceptors, DispatchProxy</PackageTags>
+        <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+        <!--
+            ProjectGuid intentionally omitted: SDK-style projects do not need it, and the
+            previous value here drifted from the GUID in AspectCentral.DispatchProxy.sln
+            ({CADF1FB5-70D1-4E4A-978E-879125554A35}), which confused tooling that expects
+            the two to align.
+        -->
+        <TargetFrameworks>net9.0;net10.0;netstandard2.1</TargetFrameworks>
+        <!--
+            The transitive MessagePack 2.3.85 (via JamesConsulting 1.0.1) was flagged by
+            NU1902 (GHSA-4qm4-8hg2-g2xm: hash-collision DoS when deserializing UNTRUSTED data).
+            Rather than suppressing the advisory, we add a direct PackageReference (in the
+            ItemGroup below) to a patched MessagePack so the vulnerable version is never
+            restored into this library's closure. The override floats forward via NuGet's
+            transitive pinning rules.
+            Tracking: drop this override once JamesConsulting ships a release without MessagePack.
+        -->
+        <Title>AspectCentral.DispatchProxy</Title>
+        <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
+        <IncludeSymbols>true</IncludeSymbols>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    </PropertyGroup>
+    <PropertyGroup>
+        <VersionMajor>2</VersionMajor>
+        <VersionMinor>0</VersionMinor>
+        <VersionBuild>0</VersionBuild>
+    </PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="AspectCentral.Abstractions" Version="1.0.0-alpha" />
-    <PackageReference Include="System.Reflection.DispatchProxy" Version="4.5.1" />
-  </ItemGroup>
-
+    <PropertyGroup>
+        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' == '' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)-local</VersionPrefix>
+        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' == 'Debug' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)-$(BUILD_BUILDNUMBER)-preview</VersionPrefix>
+        <VersionPrefix Condition=" '$(BUILD_BUILDNUMBER)' != '' And '$(Configuration)' != 'Debug' ">$(VersionMajor).$(VersionMinor).$(VersionBuild)</VersionPrefix>
+    </PropertyGroup>
+    <ItemGroup>
+        <None Include="../README.md" Pack="true" PackagePath="/"/>
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2"/>
+        <PackageReference Include="JamesConsulting" Version="1.0.1"/>
+        <PackageReference Include="MessagePack" Version="2.5.187"/>
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2"/>
+        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2"/>
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.2"/>
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+        <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+    </ItemGroup>
+    <ItemGroup>
+        <AdditionalFiles Include="PublicAPI.Shipped.txt"/>
+        <AdditionalFiles Include="PublicAPI.Unshipped.txt"/>
+    </ItemGroup>
 </Project>
