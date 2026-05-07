@@ -15,11 +15,11 @@ variables:
     value: 'Release'
 
 steps:
-- task: SonarCloudPrepare@1
+- task: SonarCloudPrepare@3
   inputs:
-    SonarCloud: 'Aspect Central'
+    SonarQube: 'Aspect Central'
     organization: 'james-consulting-llc'
-    scannerMode: 'MSBuild'
+    scannerMode: 'dotnet'
     projectKey: 'jamesconsultingllc_AspectCentral.DispatchProxy'
     projectVersion: '$(Version)'
 - task: DotNetCoreCLI@2
@@ -61,8 +61,8 @@ steps:
     FileDigest: 'SHA256'
     TimestampRfc3161: 'http://timestamp.acs.microsoft.com'
     TimestampDigest: 'SHA256'
-- task: SonarCloudAnalyze@1
-- task: SonarCloudPublish@1
+- task: SonarCloudAnalyze@3
+- task: SonarCloudPublish@3
   inputs:
     pollingTimeoutSec: '300'
 - task: CopyFiles@2
