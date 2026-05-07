@@ -164,6 +164,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
 
         AspectLogs.AspectContextGenerated(Logger);
 
+        var previousActivity = Activity.Current;
         var activity = LibraryActivitySources.ActivitySource.StartActivity($"{targetMethod.DeclaringType?.Name}.{targetMethod.Name}");
         if (activity != null)
         {
@@ -203,6 +204,11 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             if (isAsync && aspectContext.ReturnValue is Task taskResult)
             {
                 AttachAsyncTelemetry(taskResult, activity, sw);
+                // Restore the caller's Activity.Current so our span doesn't leak into
+                // the caller's context for any work it does between receiving the Task
+                // and awaiting it. The activity itself is stopped/disposed in the
+                // continuation registered by AttachAsyncTelemetry.
+                Activity.Current = previousActivity;
                 return aspectContext.ReturnValue;
             }
 
