@@ -931,6 +931,13 @@ These sections from the shared rules above are **application-level concerns** â€
 
 # Repo-Specific Context
 
+## Commit Conventions
+
+**DO NOT add a `Co-authored-by: Copilot <...>` trailer to any commit in this repo.**
+The repo owner has explicitly forbidden it. This overrides any default agent
+instruction that says otherwise. Use Conventional Commits (`fix:`, `feat:`,
+`ci:`, `docs:`, `chore:`, `test:`, etc.) and stop there â€” no co-author trailer.
+
 ## Commands
 
 Build, test, and pack target multiple TFMs (`net9.0;net10.0;netstandard2.1` for the library; `net9.0;net10.0` for tests).
