@@ -9,6 +9,17 @@
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
         <ProjectGuid>5112A87D-F8F2-43A5-B566-9F104BC83954</ProjectGuid>
         <TargetFrameworks>net9.0;net10.0;netstandard2.1</TargetFrameworks>
+        <!--
+            NU1902 is suppressed for the transitive MessagePack 2.3.85 vulnerability
+            (GHSA-4qm4-8hg2-g2xm: hash-collision DoS when deserializing UNTRUSTED data).
+            MessagePack arrives via JamesConsulting 1.0.1 -> MessagePack 2.3.85.
+            This library is an AOP/DI helper and never deserializes external data, so
+            no execution path here is exposed to the documented attack surface. We
+            deliberately do not add a direct override (which would pollute every
+            downstream consumer's dependency closure) and instead track the upstream
+            JamesConsulting package for a refreshed transitive.
+            Tracking: bump JamesConsulting once a release without MessagePack 2.3.x ships.
+        -->
         <NoWarn>$(NoWarn);NU1902</NoWarn>
         <Title>AspectCentral.DispatchProxy</Title>
         <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>

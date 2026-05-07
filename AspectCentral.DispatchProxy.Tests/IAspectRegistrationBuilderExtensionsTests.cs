@@ -34,7 +34,9 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddAspectCallsAddAspectWhenArgumentsAreValid()
         {
             mockIAspectRegistrationBuilder.Object.AddAspectViaFactory<TestAspectFactory>();
-            mockIAspectRegistrationBuilder.Verify(x => x.AddAspect(TestAspectFactory.Type, null, new MethodInfo[0]), Times.Once);
+            mockIAspectRegistrationBuilder.Verify(
+                x => x.AddAspect(TestAspectFactory.Type, null, It.Is<MethodInfo[]>(m => m.Length == 0)),
+                Times.Once);
         }
 
     }

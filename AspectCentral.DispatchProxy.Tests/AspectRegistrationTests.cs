@@ -11,6 +11,7 @@ using AspectCentral.Abstractions.Configuration;
 using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests
 {
@@ -40,7 +41,6 @@ namespace AspectCentral.DispatchProxy.Tests
         public AspectRegistrationTests()
         {
             services = new ServiceCollection();
-            services.AddAspectSupport();
             services.AddTransient<ITestInterface, MyTestInterface>();
             services.AddLogging(x => { x.AddConsole(); });
             IAspectConfigurationProvider aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
@@ -54,6 +54,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// <summary>
         ///     The test generic registration.
         /// </summary>
+        [Fact]
         public void TestGenericRegistration()
         {
             AssertServiceRegisteredCorrectly(services, ServiceLifetime.Transient);

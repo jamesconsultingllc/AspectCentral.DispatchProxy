@@ -123,7 +123,7 @@ public static class ServiceCollectionExtensions
         // Detect provider-mismatch: if a different IAspectConfigurationProvider instance is already
         // registered, ConfigureAspects would rewrite descriptors using the supplied instance while DI
         // hands aspect factories the pre-existing one at runtime, leading to silently incorrect interception.
-        var existing = serviceCollection.FirstOrDefault(d =>
+        var existing = serviceCollection.LastOrDefault(d =>
             d.ServiceType == typeof(IAspectConfigurationProvider));
         if (existing is not null)
         {
@@ -202,7 +202,7 @@ public static class ServiceCollectionExtensions
             // Transient but a pre-existing Singleton registration of the impl wins). Detect this
             // and throw with clear remediation rather than corrupt DI semantics.
             var implType = service.ImplementationType;
-            var existingConcrete = serviceCollection.FirstOrDefault(d =>
+            var existingConcrete = serviceCollection.LastOrDefault(d =>
                 d.ServiceType == implType && !d.IsKeyedService);
             if (existingConcrete is null)
             {
@@ -306,7 +306,9 @@ public static class ServiceCollectionExtensions
     /// </exception>
     private static IAspectConfigurationProvider GetOrAddInMemoryProvider(IServiceCollection serviceCollection)
     {
-        for (var i = 0; i < serviceCollection.Count; i++)
+        // Iterate from the end so we observe the descriptor MS.DI would resolve
+        // (MS.DI uses the LAST registration when GetService<T>() returns a single instance).
+        for (var i = serviceCollection.Count - 1; i >= 0; i--)
         {
             var d = serviceCollection[i];
             if (d.ServiceType != typeof(IAspectConfigurationProvider)) continue;
