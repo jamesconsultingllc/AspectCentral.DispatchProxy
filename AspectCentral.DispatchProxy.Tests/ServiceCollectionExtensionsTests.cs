@@ -147,7 +147,7 @@ public class ServiceCollectionExtensionsTests
     }
 
     [Fact]
-    public void AddAspectSupportThrowsWhenAdifferentProviderIsAlreadyRegistered()
+    public void AddAspectSupportThrowsWhenADifferentProviderIsAlreadyRegistered()
     {
         var firstProvider = new Mock<IAspectConfigurationProvider>().Object;
         var secondProvider = new Mock<IAspectConfigurationProvider>().Object;
