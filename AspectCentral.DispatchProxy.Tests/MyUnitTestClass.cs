@@ -80,7 +80,7 @@ namespace AspectCentral.DispatchProxy.Tests
         /// <returns>
         /// The <see cref="bool"/>.
         /// </returns>
-        public override bool Equals(object obj)
+        public override bool Equals(object? obj)
         {
             return ToString().Equals(obj?.ToString());
         }

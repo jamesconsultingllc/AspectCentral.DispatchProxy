@@ -51,8 +51,8 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         [Fact]
         public async Task ProfilingAsync()
         {
-            await instance.TestAsync(1, "2", null);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+            await instance.TestAsync(1, "2", null!);
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         }
 
         /// <summary>
@@ -65,7 +65,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         public async Task ProfilingAsyncWithResult()
         {
             await instance.GetClassByIdAsync(1);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         }
 
         /// <summary>
@@ -75,7 +75,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         public void ProfilingSyncMethod()
         {
             instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         }
 
         /// <summary>
@@ -90,7 +90,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
             aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
             aspectConfiguration.AddEntry(ProfilingAspectFactory.ProfilingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
             aspectConfigurationProvider.AddEntry(aspectConfiguration);
-            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName)).Returns(logger.Object);
+            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(logger.Object);
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             instance = ProfilingAspect<ITestInterface>.Create(
                 new MyTestInterface(),
@@ -104,7 +104,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         public void CreateNullInstanceThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => ProfilingAspect<ITestInterface>.Create(
-                null,
+                null!,
                 typeof(MyTestInterface),
                 loggerFactory.Object,
                 aspectConfigurationProvider,
@@ -116,7 +116,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         {
             Assert.Throws<ArgumentNullException>(() => ProfilingAspect<ITestInterface>.Create(
                 new MyTestInterface(), 
-                null,
+                null!,
                 loggerFactory.Object,
                 aspectConfigurationProvider,
                 ProfilingAspectFactory.ProfilingAspectFactoryType));
@@ -128,7 +128,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
             Assert.Throws<ArgumentNullException>(() => ProfilingAspect<ITestInterface>.Create(
                 new MyTestInterface(), 
                 typeof(MyTestInterface),
-                null,
+                null!,
                 aspectConfigurationProvider,
                 ProfilingAspectFactory.ProfilingAspectFactoryType));
         }
@@ -140,7 +140,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
                 new MyTestInterface(), 
                 typeof(MyTestInterface),
                 loggerFactory.Object,
-                null,
+                null!,
                 ProfilingAspectFactory.ProfilingAspectFactoryType));
         }
         
@@ -152,7 +152,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
                 typeof(MyTestInterface),
                 loggerFactory.Object,
                 aspectConfigurationProvider,
-                null));
+                null!));
         }
         
     }

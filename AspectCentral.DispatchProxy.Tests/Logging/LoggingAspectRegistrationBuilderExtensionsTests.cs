@@ -25,7 +25,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         [Fact]
         public void AddLoggingAspectNullBuilderThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder).AddLoggingAspect());
+            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder)!.AddLoggingAspect());
         }
 
         /// <summary>

@@ -48,7 +48,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         public void MyTestMethod()
         {
             instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
             aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
             aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType, methodsToIntercept: AspectRegistrationTests.IInterfaceType.GetMethods());
             aspectConfigurationProvider.AddEntry(aspectConfiguration);
-            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName)).Returns(logger.Object);
+            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(logger.Object);
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
             instance = LoggingAspect<ITestInterface>.Create(
                 new MyTestInterface(),
@@ -82,8 +82,8 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         [Fact]
         public async Task TestLoggingAsync()
         {
-            await instance.TestAsync(1, "2", null);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(2));
+            await instance.TestAsync(1, "2", null!);
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
         }
 
         /// <summary>
@@ -96,14 +96,14 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         public async Task TestLoggingAsyncWithResult()
         {
             await instance.GetClassByIdAsync(1);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Exactly(3));
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(3));
         }
         
         [Fact]
         public void CreateNullInstanceThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
-                null,
+                null!,
                 typeof(MyTestInterface),
                 loggerFactory.Object,
                 aspectConfigurationProvider,
@@ -115,7 +115,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
         {
             Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
                 new MyTestInterface(), 
-                null,
+                null!,
                 loggerFactory.Object,
                 aspectConfigurationProvider,
                 LoggingAspectFactory.LoggingAspectFactoryType));
@@ -127,7 +127,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
             Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
                 new MyTestInterface(), 
                 typeof(MyTestInterface),
-                null,
+                null!,
                 aspectConfigurationProvider,
                 LoggingAspectFactory.LoggingAspectFactoryType));
         }
@@ -139,7 +139,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
                 new MyTestInterface(), 
                 typeof(MyTestInterface),
                 loggerFactory.Object,
-                null,
+                null!,
                 LoggingAspectFactory.LoggingAspectFactoryType));
         }
         
@@ -151,7 +151,7 @@ namespace AspectCentral.DispatchProxy.Tests.Logging
                 typeof(MyTestInterface),
                 loggerFactory.Object,
                 aspectConfigurationProvider,
-                null));
+                null!));
         }
     }
 }

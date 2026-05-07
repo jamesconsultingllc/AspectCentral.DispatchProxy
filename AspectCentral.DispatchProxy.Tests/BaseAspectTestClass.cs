@@ -42,11 +42,11 @@ namespace AspectCentral.DispatchProxy.Tests
         /// </returns>
         public static T Create(T instance, Type type, ILoggerFactory loggerFactory, IAspectConfigurationProvider inMemoryAspectConfigurationProvider)
         {
-            object proxy = Create<T, BaseAspectTestClass<T>>();
+            object proxy = Create<T, BaseAspectTestClass<T>>()!;
             ((BaseAspectTestClass<T>) proxy).Instance = instance;
             ((BaseAspectTestClass<T>) proxy).ObjectType = type;
             ((BaseAspectTestClass<T>) proxy).AspectConfigurationProvider = inMemoryAspectConfigurationProvider;
-            ((BaseAspectTestClass<T>) proxy).Logger = loggerFactory.CreateLogger(type.FullName);
+            ((BaseAspectTestClass<T>) proxy).Logger = loggerFactory.CreateLogger(type.FullName!);
             ((BaseAspectTestClass<T>) proxy).FactoryType = TestAspectFactory.Type;
             return (T) proxy;
         }

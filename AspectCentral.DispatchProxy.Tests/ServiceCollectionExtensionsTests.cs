@@ -31,13 +31,13 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void AddAspectSupportThrowsArgumentNullExceptionWhenServiceCollectionIsNull()
         {
-            Assert.Throws<ArgumentNullException>("serviceCollection",() => default(IServiceCollection).AddAspectSupport(default(IAspectConfigurationProvider)));
+            Assert.Throws<ArgumentNullException>("serviceCollection",() => default(IServiceCollection)!.AddAspectSupport(default(IAspectConfigurationProvider)!));
         }
 
         [Fact]
         public void AddAspectSupportThrowsArgumentNull()
         {
-            Assert.Throws<ArgumentNullException>("aspectConfigurationProvider",() => serviceCollection.AddAspectSupport(default(IAspectConfigurationProvider)));
+            Assert.Throws<ArgumentNullException>("aspectConfigurationProvider",() => serviceCollection.AddAspectSupport(default(IAspectConfigurationProvider)!));
         }
 
         [Fact]

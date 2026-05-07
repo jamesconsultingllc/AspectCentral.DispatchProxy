@@ -25,7 +25,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         [Fact]
         public void AddProfilingAspectNullBuilderThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder).AddProfilingAspect());
+            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder)!.AddProfilingAspect());
         }
 
         /// <summary>

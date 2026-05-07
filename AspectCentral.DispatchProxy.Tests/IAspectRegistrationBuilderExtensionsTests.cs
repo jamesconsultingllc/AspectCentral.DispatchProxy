@@ -27,7 +27,7 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void AddAspectThrowsArgumentNullExceptionWhenAspectRegistrationBuilderIsNull()
         {
-            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder).AddAspectViaFactory<TestAspectFactory>());
+            Assert.Throws<ArgumentNullException>(() => default(IAspectRegistrationBuilder)!.AddAspectViaFactory<TestAspectFactory>());
         }
 
         [Fact]

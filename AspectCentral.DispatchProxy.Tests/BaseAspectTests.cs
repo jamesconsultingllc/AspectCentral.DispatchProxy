@@ -29,7 +29,7 @@ namespace AspectCentral.DispatchProxy.Tests
             var loggerFactory = new Mock<ILoggerFactory>();
             logger = new Mock<ILogger>();
             logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName)).Returns(logger.Object);
+            loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(logger.Object);
             var aspectConfigurationProviderMock = new Mock<IAspectConfigurationProvider>();
             aspectConfigurationProviderMock
                 .Setup(x => x.ShouldIntercept(It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<System.Reflection.MethodInfo>()))
@@ -68,7 +68,7 @@ namespace AspectCentral.DispatchProxy.Tests
             // Async + InvokeMethod=false: PreInvoke runs (1 log), inner Invoke is skipped, and PostInvoke does NOT run
             // (outer block gates PostInvoke on !isAsync, and the async wrappers never run because InvokeMethod=false).
             var result = await instance.GetClassByIdAsync(12);
-            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception>(), It.Is<Func<It.IsAnyType, Exception, string>>((v, t) => true)), Times.Once);
+            logger.Verify(x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true), It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Once);
             Assert.Equal(new MyUnitTestClass(12, "testing 123"), result);
         }
     }

@@ -81,7 +81,7 @@ namespace AspectCentral.DispatchProxy.Tests
         private static void AssertServiceRegisteredCorrectly(IServiceCollection services, ServiceLifetime lifetime)
         {
             var sp = services.BuildServiceProvider();
-            sp.GetService<ITestInterface>().Test(1, string.Empty, new MyUnitTestClass(1, string.Empty));
+            sp.GetService<ITestInterface>()!.Test(1, string.Empty, new MyUnitTestClass(1, string.Empty));
             services.Any(x => x.Lifetime == lifetime && x.ServiceType == MyTestInterfaceType && x.ImplementationType == MyTestInterfaceType).Should().BeTrue();
             services.Any(x => x.Lifetime == lifetime && x.ServiceType == IInterfaceType && x.ImplementationFactory != null).Should().BeTrue();
             sp.GetService<ITestInterface>().Should().NotBeNull();

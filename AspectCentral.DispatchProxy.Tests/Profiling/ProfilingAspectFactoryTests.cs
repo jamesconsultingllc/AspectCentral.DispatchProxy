@@ -13,13 +13,13 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         [Fact]
         public void NullLoggerFactoryThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(null, null));
+            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(null!, null!));
         }
 
         [Fact]
         public void NullAspectConfigurationProviderThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(new NullLoggerFactory(), null));
+            Assert.Throws<ArgumentNullException>(() => new ProfilingAspectFactory(new NullLoggerFactory(), null!));
         }
 
         [Fact]
@@ -42,7 +42,7 @@ namespace AspectCentral.DispatchProxy.Tests.Profiling
         [Fact]
         public void CreateNullTypeThrowsArgumentNullException()
         {
-            Assert.Throws<ArgumentNullException>(() => instance.Create(new MyTestInterface(), null));
+            Assert.Throws<ArgumentNullException>(() => instance.Create(new MyTestInterface(), null!));
         }
         
         [Fact]

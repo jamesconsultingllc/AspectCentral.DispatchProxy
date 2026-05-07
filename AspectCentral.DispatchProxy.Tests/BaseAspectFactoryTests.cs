@@ -18,13 +18,13 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void ConstructorThrowsArgumentNullExceptionWhenLoggerFactoryIsNull()
         {
-            Assert.Throws<ArgumentNullException>("loggerFactory", () => new TestAspectFactory(null, null));
+            Assert.Throws<ArgumentNullException>("loggerFactory", () => new TestAspectFactory(null!, null!));
         }
 
         [Fact]
         public void ConstructorThrowsArgumentNullExceptionWhenAspectConfigurationProviderIsNull()
         {
-            Assert.Throws<ArgumentNullException>("aspectConfigurationProvider", () => new TestAspectFactory(new NullLoggerFactory(), null));
+            Assert.Throws<ArgumentNullException>("aspectConfigurationProvider", () => new TestAspectFactory(new NullLoggerFactory(), null!));
         }
     }
 }

@@ -17,7 +17,7 @@ public class PassThroughAspect<T> : BaseAspect<T> where T : class?
 
     public static T Create(T instance, Type type, ILoggerFactory loggerFactory, IAspectConfigurationProvider provider)
     {
-        object proxy = Create<T, PassThroughAspect<T>>();
+        object proxy = Create<T, PassThroughAspect<T>>()!;
         var aspect = (PassThroughAspect<T>)proxy;
         aspect.Instance = instance;
         aspect.ObjectType = type;

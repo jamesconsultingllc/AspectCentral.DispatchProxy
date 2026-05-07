@@ -53,7 +53,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddAspectThrowsArgumentNullExceptionWhenAspectFactoryIsNull()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddAspect(default, default));
+            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddAspect(default!, default!));
         }
 
         /// <summary>
@@ -63,7 +63,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddAspectThrowsInvalidOperationExceptionWhenServicesHaveBeenRegistered()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<InvalidOperationException>(() => aspectRegistrationBuilder.AddAspect(LoggingAspectFactory.LoggingAspectFactoryType, default));
+            Assert.Throws<InvalidOperationException>(() => aspectRegistrationBuilder.AddAspect(LoggingAspectFactory.LoggingAspectFactoryType, default!));
         }
 
         /// <summary>
@@ -108,7 +108,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddServiceThrowsArgumentNullExceptionWhenImplementationIsNull()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(typeof(IAspectConfigurationProvider), default(Type), ServiceLifetime.Scoped));
+            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(typeof(IAspectConfigurationProvider), default(Type)!, ServiceLifetime.Scoped));
         }
 
         /// <summary>
@@ -118,7 +118,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddServiceThrowsArgumentNullExceptionWhenServiceIsNull()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(null, default(Type), ServiceLifetime.Scoped));
+            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(null!, default(Type)!, ServiceLifetime.Scoped));
         }
 
         /// <summary>
@@ -130,7 +130,7 @@ namespace AspectCentral.DispatchProxy.Tests
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
             aspectRegistrationBuilder.AddService(
                 typeof(IAspectFactory),
-                provider => new LoggingAspectFactory(provider.GetService<ILoggerFactory>(), provider.GetService<IAspectConfigurationProvider>()),
+                provider => new LoggingAspectFactory(provider.GetService<ILoggerFactory>()!, provider.GetService<IAspectConfigurationProvider>()!),
                 ServiceLifetime.Scoped);
             aspectRegistrationBuilder.Services.Count.Should().Be(1);
             aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries.Count.Should().Be(1);
@@ -145,7 +145,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddServiceWithFactoryThrowsArgumentNullExceptionWhenImplementationIsNull()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(typeof(IAspectFactory), default(Func<IServiceProvider, object>), ServiceLifetime.Scoped));
+            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(typeof(IAspectFactory), default(Func<IServiceProvider, object>)!, ServiceLifetime.Scoped));
         }
 
         /// <summary>
@@ -155,7 +155,7 @@ namespace AspectCentral.DispatchProxy.Tests
         public void AddServiceWithFactoryThrowsArgumentNullExceptionWhenServiceIsNull()
         {
             var aspectRegistrationBuilder = new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), new InMemoryAspectConfigurationProvider());
-            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(null, default(Func<IServiceProvider, object>), ServiceLifetime.Scoped));
+            Assert.Throws<ArgumentNullException>(() => aspectRegistrationBuilder.AddService(null!, default(Func<IServiceProvider, object>)!, ServiceLifetime.Scoped));
         }
 
         /// <summary>
@@ -174,7 +174,7 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void ConstructorThrowsArgumentNullExceptionWhenAspectConfigurationProviderIsNull()
         {
-            Assert.Throws<ArgumentNullException>(() => new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), null));
+            Assert.Throws<ArgumentNullException>(() => new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(), null!));
         }
 
         /// <summary>
@@ -183,7 +183,7 @@ namespace AspectCentral.DispatchProxy.Tests
         [Fact]
         public void ConstructorThrowsArgumentNullExceptionWhenServicesIsNull()
         {
-            Assert.Throws<ArgumentNullException>(() => new DispatchProxyAspectRegistrationBuilder(null, null));
+            Assert.Throws<ArgumentNullException>(() => new DispatchProxyAspectRegistrationBuilder(null!, null!));
         }
     }
 }
