@@ -9,6 +9,10 @@ trigger:
 pool:
   vmImage: 'windows-latest'
 
+variables:
+  buildConfiguration: 'Release'
+  Version: '2.0.0'   # override per-build by setting the Version pipeline variable in the ADO UI
+
 steps:
 - task: SonarCloudPrepare@1
   inputs:
