@@ -1,6 +1,6 @@
 ﻿//  ----------------------------------------------------------------------------------------------------------------------
 //  <copyright file="BaseAspect.cs" company="James Consulting LLC">
-//    Copyright (c) 2019 All Rights Reserved
+//    Copyright (c) 2019 James Consulting LLC. Licensed under the MIT License.
 //  </copyright>
 //  <author>Rudy James</author>
 //  <summary>

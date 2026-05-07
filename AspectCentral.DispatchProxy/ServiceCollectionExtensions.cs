@@ -1,6 +1,6 @@
 ﻿//  ----------------------------------------------------------------------------------------------------------------------
 //  <copyright file="ServiceCollectionExtensions.cs" company="James Consulting LLC">
-//    Copyright (c) 2019 All Rights Reserved
+//    Copyright (c) 2019 James Consulting LLC. Licensed under the MIT License.
 //  </copyright>
 //  <author>Rudy James</author>
 //  <summary>
@@ -137,8 +137,9 @@ public static class ServiceCollectionExtensions
         // Detect provider-mismatch: if a different IAspectConfigurationProvider instance is already
         // registered, ConfigureAspects would rewrite descriptors using the supplied instance while DI
         // hands aspect factories the pre-existing one at runtime, leading to silently incorrect interception.
+        // Skip keyed registrations — MS.DI treats them as separate from the non-keyed service.
         var existing = serviceCollection.LastOrDefault(d =>
-            d.ServiceType == typeof(IAspectConfigurationProvider));
+            d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService);
         if (existing is not null)
         {
             if (!ReferenceEquals(existing.ImplementationInstance, aspectConfigurationProvider))
@@ -329,10 +330,14 @@ public static class ServiceCollectionExtensions
     {
         // Iterate from the end so we observe the descriptor MS.DI would resolve
         // (MS.DI uses the LAST registration when GetService<T>() returns a single instance).
+        // Skip keyed registrations — MS.DI treats them as separate from the non-keyed service,
+        // so a keyed IAspectConfigurationProvider is not what GetService<IAspectConfigurationProvider>()
+        // would resolve and must not influence reuse/throw decisions here.
         for (var i = serviceCollection.Count - 1; i >= 0; i--)
         {
             var d = serviceCollection[i];
             if (d.ServiceType != typeof(IAspectConfigurationProvider)) continue;
+            if (d.IsKeyedService) continue;
             if (d.ImplementationInstance is IAspectConfigurationProvider existing) return existing;
             throw new InvalidOperationException(
                 "An IAspectConfigurationProvider is already registered without a singleton instance; " +

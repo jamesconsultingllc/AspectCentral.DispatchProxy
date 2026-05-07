@@ -1,6 +1,6 @@
 //  ----------------------------------------------------------------------------------------------------------------------
 //  <copyright file="ServiceCollectionExtensionsTests.cs" company="James Consulting LLC">
-//    Copyright (c) 2019 All Rights Reserved
+//    Copyright (c) 2019 James Consulting LLC. Licensed under the MIT License.
 //  </copyright>
 //  <author>Rudy James</author>
 //  <summary>
@@ -168,6 +168,39 @@ public class ServiceCollectionExtensionsTests
 
         act.Should().NotThrow();
         _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddAspectSupportIgnoresKeyedProviderRegistration()
+    {
+        // A keyed IAspectConfigurationProvider is not what GetService<IAspectConfigurationProvider>()
+        // resolves; it must not trigger a provider-mismatch throw against a different non-keyed instance.
+        var keyedProvider = new Mock<IAspectConfigurationProvider>().Object;
+        var newProvider = new Mock<IAspectConfigurationProvider>().Object;
+        _serviceCollection.AddKeyedSingleton<IAspectConfigurationProvider>("aux", keyedProvider);
+
+        Action act = () => _serviceCollection.AddAspectSupport(newProvider);
+
+        act.Should().NotThrow();
+        // The keyed registration is left intact and the new provider is added as a non-keyed singleton.
+        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService).Should().Be(1);
+        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService).Should().Be(1);
+    }
+
+    [Fact]
+    public void AddAspectSupportFluentIgnoresKeyedProviderRegistration()
+    {
+        // Same scenario for the fluent overload that calls GetOrAddInMemoryProvider — a keyed
+        // provider must not be reused or cause the throw path.
+        var keyedProvider = new Mock<IAspectConfigurationProvider>().Object;
+        _serviceCollection.AddKeyedSingleton<IAspectConfigurationProvider>("aux", keyedProvider);
+
+        Action act = () => _serviceCollection.AddAspectSupport();
+
+        act.Should().NotThrow();
+        // A new non-keyed InMemoryAspectConfigurationProvider is registered alongside the keyed one.
+        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService).Should().Be(1);
+        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService).Should().Be(1);
     }
 
     [Fact]
