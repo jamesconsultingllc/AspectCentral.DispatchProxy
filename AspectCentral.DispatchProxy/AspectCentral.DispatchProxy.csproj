@@ -7,7 +7,12 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageTags>AOP, aspect oriented programming, interceptors, DispatchProxy</PackageTags>
         <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
-        <ProjectGuid>5112A87D-F8F2-43A5-B566-9F104BC83954</ProjectGuid>
+        <!--
+            ProjectGuid intentionally omitted: SDK-style projects do not need it, and the
+            previous value here drifted from the GUID in AspectCentral.DispatchProxy.sln
+            ({CADF1FB5-70D1-4E4A-978E-879125554A35}), which confused tooling that expects
+            the two to align.
+        -->
         <TargetFrameworks>net9.0;net10.0;netstandard2.1</TargetFrameworks>
         <!--
             The transitive MessagePack 2.3.85 (via JamesConsulting 1.0.1) was flagged by
