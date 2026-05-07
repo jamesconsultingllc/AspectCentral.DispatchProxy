@@ -60,19 +60,26 @@ steps:
     versioningScheme: 'byEnvVar'
     versionEnvVar: Version
     arguments: '--configuration $(buildConfiguration)'
-- task: ArtifactSigning@1
-  displayName: 'Sign nupkg with Azure Artifact Signing'
+- task: AzureCLI@2
+  displayName: 'Sign nupkg with Azure Artifact Signing (dotnet sign)'
   inputs:
-    AzureServiceConnectionName: 'jc-azure-signing'
-    Endpoint: 'https://wcus.codesigning.azure.net/'
-    ArtifactSigningAccountName: 'jc-ts-account'
-    CertificateProfileName: 'Code-Signing'
-    FilesFolder: '$(Build.ArtifactStagingDirectory)/packages'
-    FilesFolderFilter: 'nupkg'
-    FilesFolderRecurse: true
-    FileDigest: 'SHA256'
-    TimestampRfc3161: 'http://timestamp.acs.microsoft.com'
-    TimestampDigest: 'SHA256'
+    azureSubscription: 'jc-azure-signing'
+    scriptType: 'pscore'
+    scriptLocation: 'inlineScript'
+    addSpnToEnvironment: true
+    inlineScript: |
+      $ErrorActionPreference = 'Stop'
+      dotnet tool install --global sign --version 0.9.1-beta.24469.1
+      $env:PATH += ";$env:USERPROFILE\.dotnet\tools"
+      sign code trusted-signing `
+        --trusted-signing-endpoint 'https://wcus.codesigning.azure.net/' `
+        --trusted-signing-account 'jc-ts-account' `
+        --trusted-signing-certificate-profile 'Code-Signing' `
+        --base-directory '$(Build.ArtifactStagingDirectory)/packages' `
+        --file-digest SHA256 `
+        --timestamp-url 'http://timestamp.acs.microsoft.com' `
+        --timestamp-digest SHA256 `
+        '**/*.nupkg'
 - task: SonarCloudAnalyze@3
 - task: SonarCloudPublish@3
   inputs:
