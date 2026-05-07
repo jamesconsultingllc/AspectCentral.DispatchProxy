@@ -53,8 +53,6 @@ public class LoggingAspectTests
             AspectRegistrationTests.MyTestInterfaceType, ServiceLifetime.Transient));
         aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType,
             methodsToIntercept: AspectRegistrationTests.InterfaceType.GetMethods());
-        aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType,
-            methodsToIntercept: AspectRegistrationTests.InterfaceType.GetMethods());
         _aspectConfigurationProvider.AddEntry(aspectConfiguration);
         _loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(_logger.Object);
         _logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);

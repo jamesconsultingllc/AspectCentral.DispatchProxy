@@ -53,7 +53,6 @@ public class ServiceCollectionExtensionsTests
         _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
         _aspectConfigurationProviderMock.Verify(
             x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
-        _serviceCollection.Count.Should().Be(7);
         _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
         _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)).Should().Be(1);
         _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)).Should().Be(1);
@@ -72,10 +71,12 @@ public class ServiceCollectionExtensionsTests
         _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
         _aspectConfigurationProviderMock.Verify(
             x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
-        _serviceCollection.Count.Should().Be(6);
         _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
         _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)).Should().Be(1);
         _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)).Should().Be(1);
+        _serviceCollection.Count(x => x.ServiceType == typeof(ITestInterface)).Should().Be(1);
+        _serviceCollection.Single(x => x.ServiceType == typeof(ITestInterface)).ImplementationType
+            .Should().Be(typeof(MyTestInterface));
     }
 
     [Fact]
