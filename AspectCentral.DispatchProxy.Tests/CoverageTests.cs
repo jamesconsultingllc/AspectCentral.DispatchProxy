@@ -112,7 +112,9 @@ public class CoverageTests
         var activity = Assert.Single(captured, a =>
             a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowSync)}");
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.Single(activity.Events, e => e.Name == "exception");
+        var exceptionEvent = Assert.Single(activity.Events, e => e.Name == "exception");
+        Assert.Contains(exceptionEvent.Tags, t => t.Key == "exception.type" && (string?)t.Value == typeof(InvalidOperationException).FullName);
+        Assert.Contains(exceptionEvent.Tags, t => t.Key == "exception.message" && (string?)t.Value == "sync boom");
     }
 
     [Fact]
