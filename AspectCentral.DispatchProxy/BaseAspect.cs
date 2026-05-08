@@ -274,7 +274,11 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
                         var resultType = taskType.GetGenericArguments()[0];
                         var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
                         aspectContext.ReturnValue = mi.Invoke(
-                            null, [shortCircuitTask, aspectContext, (Action<AspectContext>)PostInvoke]);
+                            null,
+                            BindingFlags.DoNotWrapExceptions,
+                            binder: null,
+                            parameters: [shortCircuitTask, aspectContext, (Action<AspectContext>)PostInvoke],
+                            culture: null);
                     }
                     else
                     {
@@ -328,7 +332,12 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     /// </summary>
     private void InvokeWithoutInterception(AspectContext aspectContext)
     {
-        aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
+        aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(
+            Instance,
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            parameters: aspectContext.ParameterValues,
+            culture: null);
     }
 
     /// <summary>
@@ -443,8 +452,18 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     {
         var resultType = aspectContext.TargetMethod.ReturnType.GetGenericArguments()[0];
         var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
-        var task = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
-        aspectContext.ReturnValue = mi.Invoke(null, [task, aspectContext, (Action<AspectContext>)PostInvoke]);
+        var task = aspectContext.TargetMethod.Invoke(
+            Instance,
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            parameters: aspectContext.ParameterValues,
+            culture: null);
+        aspectContext.ReturnValue = mi.Invoke(
+            null,
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            parameters: [task, aspectContext, (Action<AspectContext>)PostInvoke],
+            culture: null);
     }
 
     /// <summary>
@@ -475,7 +494,12 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     /// </param>
     private void Process(AspectContext aspectContext)
     {
-        aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues);
+        aspectContext.ReturnValue = aspectContext.TargetMethod.Invoke(
+            Instance,
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            parameters: aspectContext.ParameterValues,
+            culture: null);
     }
 
     /// <summary>
@@ -490,7 +514,12 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     /// </returns>
     private async Task ProcessAction(AspectContext aspectContext)
     {
-        var task = (Task)aspectContext.TargetMethod.Invoke(Instance, aspectContext.ParameterValues)!;
+        var task = (Task)aspectContext.TargetMethod.Invoke(
+            Instance,
+            BindingFlags.DoNotWrapExceptions,
+            binder: null,
+            parameters: aspectContext.ParameterValues,
+            culture: null)!;
         try
         {
             await task.ConfigureAwait(false);
