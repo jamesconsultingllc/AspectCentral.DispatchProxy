@@ -60,7 +60,7 @@ jobs:
           java-version: '17'
 
       - name: Restore
-        run: dotnet restore $SOLUTION
+        run: dotnet restore "$SOLUTION"
 
       - name: Install Sonar scanner
         if: ${{ vars.SONAR_PROJECT_KEY != '' }}
@@ -82,11 +82,11 @@ jobs:
       - name: Build
         env:
           CI: 'true'  # activates ContinuousIntegrationBuild for deterministic source paths
-        run: dotnet build $SOLUTION --configuration Release --no-restore
+        run: dotnet build "$SOLUTION" --configuration Release --no-restore
 
       - name: Test (with coverage)
         run: |
-          dotnet test $SOLUTION \
+          dotnet test "$SOLUTION" \
             --configuration Release \
             --no-build \
             --logger "trx;LogFileName=test-results.trx" \
@@ -103,7 +103,7 @@ jobs:
         # CI suffix prevents accidental consumption of an unpublished build.
         # publish-rc / publish-stable below produce the real signed packages.
         run: |
-          dotnet pack $PACKAGE_PROJECT \
+          dotnet pack "$PACKAGE_PROJECT" \
             --configuration Release \
             --no-build \
             --output ./artifacts \
