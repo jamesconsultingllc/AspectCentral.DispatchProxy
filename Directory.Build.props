@@ -9,7 +9,7 @@
         <_CopyrightCurrentYear>$([System.DateTime]::UtcNow.Year)</_CopyrightCurrentYear>
         <_CopyrightYears Condition="'$(_CopyrightStartYear)' == '$(_CopyrightCurrentYear)'">$(_CopyrightStartYear)</_CopyrightYears>
         <_CopyrightYears Condition="'$(_CopyrightYears)' == ''">$(_CopyrightStartYear) - $(_CopyrightCurrentYear)</_CopyrightYears>
-        <Copyright>Copyright (c) $(_CopyrightYears) James Consulting LLC. All Rights Reserved.</Copyright>
+        <Copyright>Copyright (c) $(_CopyrightYears) $(Company). All Rights Reserved.</Copyright>
     </PropertyGroup>
 
     <PropertyGroup>
