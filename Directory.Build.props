@@ -3,7 +3,13 @@
     <PropertyGroup>
         <Company>James Consulting LLC</Company>
         <Authors>Rudy James</Authors>
-        <Copyright>Copyright (c) 2019 - $([System.DateTime]::Now.Year) James Consulting LLC. All Rights Reserved.</Copyright>
+        <!-- Copyright year range. When start year == current year, only one year is emitted
+             (avoids degenerate ranges like "2026 - 2026"). -->
+        <_CopyrightStartYear>2019</_CopyrightStartYear>
+        <_CopyrightCurrentYear>$([System.DateTime]::Now.Year)</_CopyrightCurrentYear>
+        <_CopyrightYears Condition="'$(_CopyrightStartYear)' == '$(_CopyrightCurrentYear)'">$(_CopyrightStartYear)</_CopyrightYears>
+        <_CopyrightYears Condition="'$(_CopyrightYears)' == ''">$(_CopyrightStartYear) - $(_CopyrightCurrentYear)</_CopyrightYears>
+        <Copyright>Copyright (c) $(_CopyrightYears) James Consulting LLC. All Rights Reserved.</Copyright>
     </PropertyGroup>
 
     <PropertyGroup>
