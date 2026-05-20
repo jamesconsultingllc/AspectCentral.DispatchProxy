@@ -4,10 +4,9 @@ using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using AspectCentral.DispatchProxy.Profiling;
 using AspectCentral.DispatchProxy.Telemetry;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests;
@@ -26,20 +25,19 @@ public class CoverageTests
     private static readonly Type TestInterfaceType = typeof(ITestInterface);
     private static readonly Type ThrowingType = typeof(IThrowingTestInterface);
 
-    private static (ILoggerFactory loggerFactory, Mock<ILogger> logger, IAspectConfigurationProvider provider)
+    private static (ILoggerFactory loggerFactory, RecordingLogger logger, IAspectConfigurationProvider provider)
         CreateInfrastructure(Type targetType, bool shouldIntercept = true)
     {
-        var loggerFactoryMock = new Mock<ILoggerFactory>();
-        var logger = new Mock<ILogger>();
-        logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        loggerFactoryMock.Setup(x => x.CreateLogger(targetType.FullName!)).Returns(logger.Object);
+        var loggerFactory = Substitute.For<ILoggerFactory>();
+        var logger = new RecordingLogger();
+        loggerFactory.CreateLogger(targetType.FullName!).Returns(logger);
 
-        var providerMock = new Mock<IAspectConfigurationProvider>();
-        providerMock
-            .Setup(x => x.ShouldIntercept(It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<MethodInfo>()))
+        var provider = Substitute.For<IAspectConfigurationProvider>();
+        provider
+            .ShouldIntercept(Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<MethodInfo>())
             .Returns(shouldIntercept);
 
-        return (loggerFactoryMock.Object, logger, providerMock.Object);
+        return (loggerFactory, logger, provider);
     }
 
     [Fact]
@@ -65,14 +63,14 @@ public class CoverageTests
             loggerFactory, provider);
         instance.Test(1, "abc", new MyUnitTestClass(1, "x"));
 
-        var activity = captured.Should()
-            .Contain(a => a.DisplayName == $"{nameof(ITestInterface)}.{nameof(ITestInterface.Test)}").Which;
-        activity.GetTagItem("code.namespace").Should().Be(typeof(MyTestInterface).Namespace);
-        activity.GetTagItem("code.function").Should().Be(nameof(ITestInterface.Test));
-        activity.GetTagItem("aspect.target_type").Should().Be(typeof(MyTestInterface).FullName);
-        activity.GetTagItem("aspect.interface_type").Should().Be(typeof(ITestInterface).FullName);
-        activity.GetTagItem("aspect.factory").Should().Be(PassThroughAspect<ITestInterface>.Type.FullName);
-        activity.Status.Should().Be(ActivityStatusCode.Unset);
+        var activity = Assert.Single(captured,
+            a => a.DisplayName == $"{nameof(ITestInterface)}.{nameof(ITestInterface.Test)}");
+        Assert.Equal(typeof(MyTestInterface).Namespace, activity.GetTagItem("code.namespace"));
+        Assert.Equal(nameof(ITestInterface.Test), activity.GetTagItem("code.function"));
+        Assert.Equal(typeof(MyTestInterface).FullName, activity.GetTagItem("aspect.target_type"));
+        Assert.Equal(typeof(ITestInterface).FullName, activity.GetTagItem("aspect.interface_type"));
+        Assert.Equal(PassThroughAspect<ITestInterface>.Type.FullName, activity.GetTagItem("aspect.factory"));
+        Assert.Equal(ActivityStatusCode.Unset, activity.Status);
     }
 
     [Fact]
@@ -82,8 +80,8 @@ public class CoverageTests
         var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
             loggerFactory, provider);
 
-        var act = () => instance.Test(1, "abc", new MyUnitTestClass(1, "x"));
-        act.Should().NotThrow();
+        // No exception is the assertion — if Test throws the test fails.
+        instance.Test(1, "abc", new MyUnitTestClass(1, "x"));
     }
 
     [Fact]
@@ -109,12 +107,13 @@ public class CoverageTests
             new ThrowingTestInterface(), typeof(ThrowingTestInterface), loggerFactory, provider);
 
         var thrown = Assert.Throws<TargetInvocationException>(() => instance.ThrowSync());
-        thrown.InnerException.Should().BeOfType<InvalidOperationException>().Which.Message.Should().Be("sync boom");
+        var inner = Assert.IsType<InvalidOperationException>(thrown.InnerException);
+        Assert.Equal("sync boom", inner.Message);
 
-        var activity = captured.Should().Contain(a =>
-            a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowSync)}").Which;
-        activity.Status.Should().Be(ActivityStatusCode.Error);
-        activity.Events.Should().ContainSingle(e => e.Name == "exception");
+        var activity = Assert.Single(captured, a =>
+            a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowSync)}");
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
+        Assert.Single(activity.Events, e => e.Name == "exception");
     }
 
     [Fact]
@@ -142,9 +141,9 @@ public class CoverageTests
         var task = instance.ThrowAsync();
         await Assert.ThrowsAsync<InvalidOperationException>(() => task);
 
-        var activity = captured.Should().Contain(a =>
-            a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowAsync)}").Which;
-        activity.Status.Should().Be(ActivityStatusCode.Error);
+        var activity = Assert.Single(captured, a =>
+            a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowAsync)}");
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
     [Fact]
@@ -171,11 +170,10 @@ public class CoverageTests
 
         await Assert.ThrowsAsync<TaskCanceledException>(async () => await instance.ReturnCanceledTask());
 
-        var activity = captured.Should().Contain(a =>
-                a.DisplayName ==
-                $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ReturnCanceledTask)}")
-            .Which;
-        activity.Status.Should().Be(ActivityStatusCode.Error);
+        var activity = Assert.Single(captured, a =>
+            a.DisplayName ==
+            $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ReturnCanceledTask)}");
+        Assert.Equal(ActivityStatusCode.Error, activity.Status);
     }
 
     [Fact]
@@ -188,20 +186,20 @@ public class CoverageTests
         var instance = PassThroughAspect<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
             loggerFactory, provider);
 
-        var act = () => instance.Test(7, "ok", new MyUnitTestClass(7, "ok"));
-        act.Should().NotThrow();
+        // No exception is the assertion — if Test throws the test fails.
+        instance.Test(7, "ok", new MyUnitTestClass(7, "ok"));
     }
 
     [Fact]
     public void LoggingAspect_ExposesOpenGenericType()
     {
-        LoggingAspect<ITestInterface>.Type.Should().Be(typeof(LoggingAspect<>));
+        Assert.Equal(typeof(LoggingAspect<>), LoggingAspect<ITestInterface>.Type);
     }
 
     [Fact]
     public void ProfilingAspect_ExposesOpenGenericType()
     {
-        ProfilingAspect<ITestInterface>.Type.Should().Be(typeof(ProfilingAspect<>));
+        Assert.Equal(typeof(ProfilingAspect<>), ProfilingAspect<ITestInterface>.Type);
     }
 
     [Fact]
@@ -210,11 +208,11 @@ public class CoverageTests
         var services = new ServiceCollection();
         var builder = services.AddAspectSupport(typeof(LoggingAspectFactory).Assembly);
 
-        builder.Should().BeOfType<DispatchProxyAspectRegistrationBuilder>();
-        services.Count(x => x.ServiceType == typeof(LoggingAspectFactory)).Should().Be(1);
-        services.Count(x => x.ServiceType == typeof(ProfilingAspectFactory)).Should().Be(1);
+        Assert.IsType<DispatchProxyAspectRegistrationBuilder>(builder);
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(LoggingAspectFactory)));
+        Assert.Equal(1, services.Count(x => x.ServiceType == typeof(ProfilingAspectFactory)));
         // Test-project factories live in a different assembly and therefore must not be picked up.
-        services.Count(x => x.ServiceType == typeof(TestAspectFactory)).Should().Be(0);
+        Assert.Equal(0, services.Count(x => x.ServiceType == typeof(TestAspectFactory)));
     }
 
     [Fact]
@@ -252,7 +250,8 @@ public class CoverageTests
         using var sp = services.BuildServiceProvider();
         var proxy = dpBuilder.InvokeCreateFactory(sp, configuration);
 
-        proxy.Should().NotBeNull().And.BeAssignableTo<ITestInterface>();
+        Assert.NotNull(proxy);
+        Assert.IsAssignableFrom<ITestInterface>(proxy);
     }
 
     [Fact]
@@ -275,6 +274,7 @@ public class CoverageTests
         using var sp = services.BuildServiceProvider();
         var proxy = dpBuilder.InvokeCreateFactory(sp, configuration);
 
-        proxy.Should().NotBeNull().And.BeAssignableTo<ITestInterface>();
+        Assert.NotNull(proxy);
+        Assert.IsAssignableFrom<ITestInterface>(proxy);
     }
 }

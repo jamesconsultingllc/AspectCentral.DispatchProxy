@@ -10,18 +10,18 @@
 
 using System.Reflection;
 using AspectCentral.Abstractions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests;
 
 public class AspectRegistrationBuilderExtensionsTests
 {
-    private readonly Mock<IAspectRegistrationBuilder> _mockIAspectRegistrationBuilder;
+    private readonly IAspectRegistrationBuilder _aspectRegistrationBuilder;
 
     public AspectRegistrationBuilderExtensionsTests()
     {
-        _mockIAspectRegistrationBuilder = new Mock<IAspectRegistrationBuilder>();
+        _aspectRegistrationBuilder = Substitute.For<IAspectRegistrationBuilder>();
     }
 
     [Fact]
@@ -34,9 +34,8 @@ public class AspectRegistrationBuilderExtensionsTests
     [Fact]
     public void AddAspectCallsAddAspectWhenArgumentsAreValid()
     {
-        _mockIAspectRegistrationBuilder.Object.AddAspectViaFactory<TestAspectFactory>();
-        _mockIAspectRegistrationBuilder.Verify(
-            x => x.AddAspect(TestAspectFactory.Type, null, It.Is<MethodInfo[]>(m => m.Length == 0)),
-            Times.Once);
+        _aspectRegistrationBuilder.AddAspectViaFactory<TestAspectFactory>();
+        _aspectRegistrationBuilder.Received(1)
+            .AddAspect(TestAspectFactory.Type, null, Arg.Is<MethodInfo[]>(m => m.Length == 0));
     }
 }

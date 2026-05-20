@@ -1,6 +1,5 @@
 using System.Reflection;
 using AspectCentral.DispatchProxy.Telemetry;
-using FluentAssertions;
 using NetArchTest.Rules;
 using Xunit;
 
@@ -18,17 +17,17 @@ public class ArchitectureTests
                 "Microsoft.Extensions.Hosting")
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue();
+        Assert.True(result.IsSuccessful);
     }
 
     [Fact]
     public void TelemetrySources_ShouldFollow_NamingConvention()
     {
         foreach (var source in LibraryActivitySources.All)
-            source.Should().StartWith("AspectCentral.DispatchProxy.");
+            Assert.StartsWith("AspectCentral.DispatchProxy.", source);
 
         foreach (var meter in LibraryMeters.All)
-            meter.Should().StartWith("AspectCentral.DispatchProxy.");
+            Assert.StartsWith("AspectCentral.DispatchProxy.", meter);
     }
 
     [Fact]
@@ -41,7 +40,7 @@ public class ArchitectureTests
             .Should().Inherit(typeof(BaseAspectFactory))
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue();
+        Assert.True(result.IsSuccessful);
     }
 
     [Fact]
@@ -51,6 +50,6 @@ public class ArchitectureTests
             .GetFields(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly)
             .Where(field => !field.IsLiteral);
 
-        staticFields.Should().BeEmpty();
+        Assert.Empty(staticFields);
     }
 }

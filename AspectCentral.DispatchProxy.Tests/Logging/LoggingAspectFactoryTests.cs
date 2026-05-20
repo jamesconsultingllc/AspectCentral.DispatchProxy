@@ -1,6 +1,5 @@
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -30,8 +29,7 @@ public class LoggingAspectFactoryTests
     [Fact]
     public void LoggingAspectFactoryConstructorSucceeds()
     {
-        new LoggingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()).Should()
-            .NotBeNull();
+        Assert.NotNull(new LoggingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()));
     }
 
     [Fact]
@@ -49,6 +47,6 @@ public class LoggingAspectFactoryTests
     [Fact]
     public void CreatedObjectShouldNotBeNull()
     {
-        _instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)).Should().NotBeNull();
+        Assert.NotNull(_instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)));
     }
 }

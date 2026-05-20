@@ -8,7 +8,6 @@
 // --------------------------------------------------------------------------------------------------------------------
 
 using AspectCentral.Abstractions.Configuration;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -72,11 +71,11 @@ public class AspectRegistrationTests
     {
         var sp = services.BuildServiceProvider();
         sp.GetService<ITestInterface>()!.Test(1, string.Empty, new MyUnitTestClass(1, string.Empty));
-        services.Any(x =>
+        Assert.Contains(services, x =>
             x.Lifetime == lifetime && x.ServiceType == MyTestInterfaceType &&
-            x.ImplementationType == MyTestInterfaceType).Should().BeTrue();
-        services.Any(x => x.Lifetime == lifetime && x.ServiceType == InterfaceType && x.ImplementationFactory != null)
-            .Should().BeTrue();
-        sp.GetService<ITestInterface>().Should().NotBeNull();
+            x.ImplementationType == MyTestInterfaceType);
+        Assert.Contains(services, x =>
+            x.Lifetime == lifetime && x.ServiceType == InterfaceType && x.ImplementationFactory != null);
+        Assert.NotNull(sp.GetService<ITestInterface>());
     }
 }

@@ -1,6 +1,5 @@
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Profiling;
-using FluentAssertions;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -30,8 +29,7 @@ public class ProfilingAspectFactoryTests
     [Fact]
     public void ProfilingAspectFactoryConstructorSucceeds()
     {
-        new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()).Should()
-            .NotBeNull();
+        Assert.NotNull(new ProfilingAspectFactory(new NullLoggerFactory(), new InMemoryAspectConfigurationProvider()));
     }
 
     [Fact]
@@ -49,6 +47,6 @@ public class ProfilingAspectFactoryTests
     [Fact]
     public void CreatedObjectShouldNotBeNull()
     {
-        _instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)).Should().NotBeNull();
+        Assert.NotNull(_instance.Create<ITestInterface>(new MyTestInterface(), typeof(MyTestInterface)));
     }
 }
