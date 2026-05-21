@@ -106,14 +106,15 @@ public class CoverageTests
         var instance = PassThroughAspect<IThrowingTestInterface>.Create(
             new ThrowingTestInterface(), typeof(ThrowingTestInterface), loggerFactory, provider);
 
-        var thrown = Assert.Throws<TargetInvocationException>(() => instance.ThrowSync());
-        var inner = Assert.IsType<InvalidOperationException>(thrown.InnerException);
-        Assert.Equal("sync boom", inner.Message);
+        var thrown = Assert.Throws<InvalidOperationException>(() => instance.ThrowSync());
+        Assert.Equal("sync boom", thrown.Message);
 
         var activity = Assert.Single(captured, a =>
             a.DisplayName == $"{nameof(IThrowingTestInterface)}.{nameof(IThrowingTestInterface.ThrowSync)}");
         Assert.Equal(ActivityStatusCode.Error, activity.Status);
-        Assert.Single(activity.Events, e => e.Name == "exception");
+        var exceptionEvent = Assert.Single(activity.Events, e => e.Name == "exception");
+        Assert.Contains(exceptionEvent.Tags, t => t.Key == "exception.type" && (string?)t.Value == typeof(InvalidOperationException).FullName);
+        Assert.Contains(exceptionEvent.Tags, t => t.Key == "exception.message" && (string?)t.Value == "sync boom");
     }
 
     [Fact]

@@ -23,9 +23,8 @@
             transitive pinning rules.
             Tracking: drop this override once JamesConsulting ships a release without MessagePack.
         -->
-        <Title>AspectCentral.DispatchProxy</Title>
-        <PackageProjectUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/projects</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy</RepositoryUrl>
+        <PackageProjectUrl>https://github.com/$(RepositoryOwner)/$(PackageId)</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/$(RepositoryOwner)/$(PackageId)</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
         <EmbedUntrackedSources>true</EmbedUntrackedSources>

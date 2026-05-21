@@ -439,14 +439,95 @@ dotnet test AspectCentral.DispatchProxy.Tests/AspectCentral.DispatchProxy.Tests.
 # Run a single class or method (xUnit filter syntax)
 dotnet test --filter "FullyQualifiedName~BaseAspectTests"
 
-# Pack the NuGet (matches azure-pipelines.yml)
+# Pack the NuGet (the workflow runs the equivalent of this)
 dotnet pack AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj --configuration Release
 ```
 
-CI (`azure-pipelines.yml`) additionally runs SonarCloud analysis, signs the `.nupkg` with
-`dotnet sign` against Azure Artifact Signing (workload-identity federation, no client secrets),
-and publishes artifacts. Local builds get a `-local` suffix; Debug CI
-builds get `-$(BUILD_BUILDNUMBER)-preview`.
+CI runs in **GitHub Actions** via a single workflow:
+[`.github/workflows/ci.yml`](./.github/workflows/ci.yml). It contains three jobs:
+
+- **`build-test`** — runs on every push to `develop`, `main`, `master`, `feature/**`,
+  `release/**`, `hotfix/**`, on PRs to `develop`/`main`/`master`, and on `v*` tags.
+  Restores, builds, tests on `net9.0` + `net10.0`, runs SonarCloud (when `vars.SONAR_PROJECT_KEY`
+  is set), and uploads a preview `*.nupkg` artifact suffixed `-ci.<run_number>`.
+- **`publish-rc`** — `needs: build-test`. Runs only on `release/**` branches. Signs the
+  package with **Azure Trusted Signing** (OIDC, no secrets) and pushes to nuget.org via
+  **NuGet Trusted Publishing** (OIDC, no API key).
+- **`publish-stable`** — `needs: build-test`. Runs only on `v*` tags. Same sign/push as
+  RC plus a GitHub Release. Verifies the tag matches `<VersionPrefix>` and that the tagged
+  commit is reachable from `master`.
+
+Both publish jobs gate on `build-test` succeeding first — there is no way to ship an
+untested package. See **Release Process** below.
+
+---
+
+## Release Process
+
+This repository follows **GitFlow with separate RC and stable channels**, both driven by
+the single workflow [`.github/workflows/ci.yml`](./.github/workflows/ci.yml). The git ref
+decides which publish job runs (after `build-test` passes).
+
+### Channels
+
+| Trigger | Job | Version produced | Example |
+|---|---|---|---|
+| Push to `release/X.Y.Z` branch | `publish-rc` | `<VersionPrefix>-rc.<run_number>` | `2.0.0-rc.42` |
+| Push tag `vX.Y.Z` | `publish-stable` | `<VersionPrefix>` | `2.0.0` |
+
+`<VersionPrefix>` is the value in
+[`AspectCentral.DispatchProxy.csproj`](./AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj)
+(currently `2.0.0`). The two channels share that single source of truth — bumping it bumps both.
+
+### End-to-end flow for a new release
+
+1. Cut the release branch from `develop`:
+   ```bash
+   git checkout develop && git pull
+   git checkout -b release/2.0.0
+   git push -u origin release/2.0.0
+   ```
+   → `publish-rc` ships `2.0.0-rc.1` to nuget.org.
+2. Land bug fixes on `release/2.0.0` (PR or direct push). Each push ships
+   `2.0.0-rc.2`, `-rc.3`, … so consumers can validate against real RCs.
+3. Bump `<VersionPrefix>` in the `.csproj` only when the **next** release should change
+   (e.g. you decide to ship `2.0.1` instead of `2.0.0`). Patch/minor RCs of the same target
+   stay on the same prefix.
+4. When the RC is accepted:
+   - PR `release/2.0.0` → `master`. Merge.
+   - Tag the merge commit on `master`:
+     ```bash
+     git checkout master && git pull
+     git tag v2.0.0 && git push origin v2.0.0
+     ```
+     → `publish-stable` ships `2.0.0` to nuget.org and creates a GitHub Release.
+   - Back-merge `release/2.0.0` → `develop` so any release-only fixes flow back.
+
+### Safety checks on `publish-stable`
+
+- **Tag must match `<VersionPrefix>`.** `v2.0.0` against a csproj of `<VersionPrefix>2.0.1</VersionPrefix>`
+  fails before signing.
+- **Tag commit must be reachable from `master`.** Tagging a feature branch fails the workflow.
+
+### What never publishes
+
+- Pushes to `develop`, `feature/**`, `hotfix/**`, or PRs — these only run `ci.yml`.
+- Pushes to `release/**` whose CI fails — `publish-rc` runs in the same workflow as build/test
+  and stops on the first failed step.
+
+### Required GitHub configuration
+
+The `release` GitHub Environment must exist on the repo (it scopes the OIDC subject claim,
+satisfies the nuget.org Trusted Publishing policy, and gates secret access). Configuration is
+shared at the **org level**:
+
+- **Org secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `NUGET_USER`
+  (and optionally `SONAR_TOKEN` when SonarCloud analysis is enabled)
+- **Org variables:** `TRUSTED_SIGNING_ENDPOINT`, `TRUSTED_SIGNING_ACCOUNT`, `TRUSTED_SIGNING_PROFILE`
+  (and optionally `SONAR_PROJECT_KEY` and `SONAR_ORG` when SonarCloud analysis is enabled)
+
+The Entra app registration backing `AZURE_CLIENT_ID` needs a federated credential whose
+subject is `repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release`.
 
 ---
 

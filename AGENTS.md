@@ -931,6 +931,13 @@ These sections from the shared rules above are **application-level concerns** �
 
 # Repo-Specific Context
 
+## Commit Conventions
+
+**DO NOT add a `Co-authored-by: Copilot <...>` trailer to any commit in this repo.**
+The repo owner has explicitly forbidden it. This overrides any default agent
+instruction that says otherwise. Use Conventional Commits (`fix:`, `feat:`,
+`ci:`, `docs:`, `chore:`, `test:`, etc.) and stop there — no co-author trailer.
+
 ## Commands
 
 Build, test, and pack target multiple TFMs (`net9.0;net10.0;netstandard2.1` for the library; `net9.0;net10.0` for tests).
@@ -950,11 +957,39 @@ dotnet test AspectCentral.DispatchProxy.Tests/AspectCentral.DispatchProxy.Tests.
 dotnet test --filter "FullyQualifiedName~BaseAspectTests"
 dotnet test --filter "FullyQualifiedName=AspectCentral.DispatchProxy.Tests.BaseAspectTests.SomeTest"
 
-# Pack the NuGet package (matches azure-pipelines.yml)
+# Pack the NuGet package
 dotnet pack AspectCentral.DispatchProxy/AspectCentral.DispatchProxy.csproj --configuration Release
 ```
 
-CI (`azure-pipelines.yml`) additionally runs SonarCloud analysis, signs the `.nupkg` with `dotnet sign` against Azure Artifact Signing (workload-identity federation, no client secrets), and publishes artifacts. The version is composed from `VersionMajor.VersionMinor.VersionBuild` in the `.csproj`, suffixed with `-local` outside CI and `-$(BUILD_BUILDNUMBER)-preview` for Debug CI builds.
+## Release Process — DO NOT DEVIATE
+
+CI/CD lives in a single workflow: `.github/workflows/ci.yml`. Three jobs:
+
+| Job | Triggers | Purpose |
+|---|---|---|
+| `build-test` | every push/PR/tag (ubuntu) | Restore, build, test on net9.0+net10.0; SonarCloud (when configured); preview pack |
+| `publish-rc` | `needs: build-test`; `if: refs/heads/release/**` (windows) | Sign with Azure Trusted Signing → push `<VersionPrefix>-rc.<run_number>` to nuget.org |
+| `publish-stable` | `needs: build-test`; `if: refs/tags/v*` (windows) | Same sign+push for `<VersionPrefix>` (must equal tag); creates GitHub Release |
+
+**Rules every agent must follow:**
+
+1. **Never publish from anything other than `release/**` or a `v*` tag.** No `workflow_dispatch` shortcut, no manual `dotnet nuget push`.
+2. **Bump `<VersionPrefix>` in `AspectCentral.DispatchProxy.csproj` exactly once per release cycle**, on the release branch, before the first RC. Do not bump it on `develop`, `master`, or in a hotfix without first cutting a `release/` branch.
+3. **Stable shipping flow:**
+   - Cut `release/X.Y.Z` from `develop` → push → ships `X.Y.Z-rc.<n>`.
+   - Land RC fixes on the release branch → each push ships next `-rc.<n+1>`.
+   - PR `release/X.Y.Z` → `master`, merge.
+   - On `master`: `git tag vX.Y.Z && git push origin vX.Y.Z` → ships stable `X.Y.Z`.
+   - Back-merge `release/X.Y.Z` → `develop`.
+4. **Tag must equal `<VersionPrefix>`** and **tag commit must be reachable from `master`** — the workflow enforces both and fails the publish otherwise. If you're tagging from anywhere else, stop.
+5. **Filename `ci.yml` is load-bearing.** The nuget.org Trusted Publishing policy matches on this exact filename. Do not rename or split this file without also updating the policy on nuget.org.
+6. **`environment: release` is load-bearing.** It scopes the OIDC subject claim that both Azure (federated credential subject `repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release`) and the nuget.org policy require.
+
+**Required GH config** (already set at the org level):
+
+- **Secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `NUGET_USER` (the nuget.org username of the trust-policy creator), optional `SONAR_TOKEN`.
+- **Variables:** `TRUSTED_SIGNING_ENDPOINT`, `TRUSTED_SIGNING_ACCOUNT`, `TRUSTED_SIGNING_PROFILE`, optional `SIGN_TOOL_VERSION`, `SONAR_PROJECT_KEY`, `SONAR_ORG`.
+- **Repo `release` Environment** must exist (even if empty) so `environment: release` resolves.
 
 ## Architecture
 
