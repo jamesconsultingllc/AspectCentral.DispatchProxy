@@ -9,23 +9,22 @@
 //  ----------------------------------------------------------------------------------------------------------------------
 
 using AspectCentral.Abstractions.Configuration;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests;
 
 public class ServiceCollectionExtensionsTests
 {
-    private readonly Mock<IAspectConfigurationProvider> _aspectConfigurationProviderMock;
+    private readonly IAspectConfigurationProvider _aspectConfigurationProvider;
     private readonly ServiceCollection _serviceCollection;
 
     public ServiceCollectionExtensionsTests()
     {
         _serviceCollection = new ServiceCollection();
-        _aspectConfigurationProviderMock = new Mock<IAspectConfigurationProvider>();
+        _aspectConfigurationProvider = Substitute.For<IAspectConfigurationProvider>();
     }
 
     [Fact]
@@ -45,38 +44,39 @@ public class ServiceCollectionExtensionsTests
     [Fact]
     public void AddAspectSupportRegistersProviderAndFactoriesAndInterceptors()
     {
-        _aspectConfigurationProviderMock
-            .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))).Returns(
-                new AspectConfiguration(ServiceDescriptor.Describe(typeof(ITestInterface), typeof(MyTestInterface),
-                    ServiceLifetime.Transient)));
+        _aspectConfigurationProvider
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))
+            .Returns(new AspectConfiguration(ServiceDescriptor.Describe(typeof(ITestInterface),
+                typeof(MyTestInterface), ServiceLifetime.Transient)));
         _serviceCollection.TryAddTransient<ITestInterface, MyTestInterface>();
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-        _aspectConfigurationProviderMock.Verify(
-            x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
-        _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(MyTestInterface)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(ITestInterface) && x.ImplementationFactory != null)
-            .Should().Be(1);
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
+        _aspectConfigurationProvider.Received(1)
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(MyTestInterface)));
+        Assert.Equal(1,
+            _serviceCollection.Count(x =>
+                x.ServiceType == typeof(ITestInterface) && x.ImplementationFactory != null));
     }
 
     [Fact]
     public void AddAspectSupportDoesNotReplaceServiceDescriptorsThatAreNotConfigured()
     {
-        _aspectConfigurationProviderMock
-            .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+        _aspectConfigurationProvider
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))
             .Returns(default(AspectConfiguration));
         _serviceCollection.TryAddTransient<ITestInterface, MyTestInterface>();
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-        _aspectConfigurationProviderMock.Verify(
-            x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
-        _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)).Should().Be(1);
-        _serviceCollection.Count(x => x.ServiceType == typeof(ITestInterface)).Should().Be(1);
-        _serviceCollection.Single(x => x.ServiceType == typeof(ITestInterface)).ImplementationType
-            .Should().Be(typeof(MyTestInterface));
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
+        _aspectConfigurationProvider.Received(1)
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(TestAspectFactory2)));
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(ITestInterface)));
+        Assert.Equal(typeof(MyTestInterface),
+            _serviceCollection.Single(x => x.ServiceType == typeof(ITestInterface)).ImplementationType);
     }
 
     [Fact]
@@ -85,15 +85,15 @@ public class ServiceCollectionExtensionsTests
         var configuration = new AspectConfiguration(ServiceDescriptor.Describe(typeof(ITestInterface),
             typeof(MyTestInterface), ServiceLifetime.Transient));
         configuration.AddEntry(TestAspectFactory.Type);
-        _aspectConfigurationProviderMock
-            .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+        _aspectConfigurationProvider
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))
             .Returns(configuration);
         _serviceCollection.AddLogging();
         _serviceCollection.TryAddTransient<ITestInterface, MyTestInterface>();
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-        _aspectConfigurationProviderMock.Verify(
-            x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)), Times.Once);
-        _serviceCollection.BuildServiceProvider().GetService<ITestInterface>().Should().NotBeNull();
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
+        _aspectConfigurationProvider.Received(1)
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface));
+        Assert.NotNull(_serviceCollection.BuildServiceProvider().GetService<ITestInterface>());
     }
 
     [Fact]
@@ -104,16 +104,15 @@ public class ServiceCollectionExtensionsTests
         _serviceCollection.AddTransient(typeof(IGenericService<>), typeof(GenericService<>));
         var beforeDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(IGenericService<>));
 
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
 
         var afterDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(IGenericService<>));
-        afterDescriptor.Should().BeSameAs(beforeDescriptor);
-        afterDescriptor.ImplementationType.Should().Be(typeof(GenericService<>));
-        afterDescriptor.ImplementationFactory.Should().BeNull();
+        Assert.Same(beforeDescriptor, afterDescriptor);
+        Assert.Equal(typeof(GenericService<>), afterDescriptor.ImplementationType);
+        Assert.Null(afterDescriptor.ImplementationFactory);
         // Provider should never be queried for an open generic.
-        _aspectConfigurationProviderMock.Verify(
-            x => x.GetTypeAspectConfiguration(It.IsAny<Type>(), It.IsAny<Type>()),
-            Times.Never);
+        _aspectConfigurationProvider.DidNotReceive()
+            .GetTypeAspectConfiguration(Arg.Any<Type>(), Arg.Any<Type>());
     }
 
     [Fact]
@@ -124,11 +123,11 @@ public class ServiceCollectionExtensionsTests
         _serviceCollection.AddTransient<ITestInterface>(_ => new MyTestInterface());
         var beforeDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
 
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
 
         var afterDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
-        afterDescriptor.Should().BeSameAs(beforeDescriptor);
-        afterDescriptor.ImplementationFactory.Should().NotBeNull();
+        Assert.Same(beforeDescriptor, afterDescriptor);
+        Assert.NotNull(afterDescriptor.ImplementationFactory);
     }
 
     [Fact]
@@ -140,35 +139,34 @@ public class ServiceCollectionExtensionsTests
         _serviceCollection.AddSingleton<ITestInterface>(instance);
         var beforeDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
 
-        _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
 
         var afterDescriptor = _serviceCollection.Single(d => d.ServiceType == typeof(ITestInterface));
-        afterDescriptor.Should().BeSameAs(beforeDescriptor);
-        afterDescriptor.ImplementationInstance.Should().BeSameAs(instance);
+        Assert.Same(beforeDescriptor, afterDescriptor);
+        Assert.Same(instance, afterDescriptor.ImplementationInstance);
     }
 
     [Fact]
     public void AddAspectSupportThrowsWhenADifferentProviderIsAlreadyRegistered()
     {
-        var firstProvider = new Mock<IAspectConfigurationProvider>().Object;
-        var secondProvider = new Mock<IAspectConfigurationProvider>().Object;
+        var firstProvider = Substitute.For<IAspectConfigurationProvider>();
+        var secondProvider = Substitute.For<IAspectConfigurationProvider>();
         _serviceCollection.AddSingleton(firstProvider);
 
-        Action act = () => _serviceCollection.AddAspectSupport(secondProvider);
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*already registered*different instance*");
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport(secondProvider));
+        Assert.Contains("already registered", ex.Message);
+        Assert.Contains("different instance", ex.Message);
     }
 
     [Fact]
     public void AddAspectSupportSucceedsWhenSameProviderIsAlreadyRegistered()
     {
-        _serviceCollection.AddSingleton(_aspectConfigurationProviderMock.Object);
+        _serviceCollection.AddSingleton(_aspectConfigurationProvider);
 
-        Action act = () => _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-
-        act.Should().NotThrow();
-        _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)).Should().Be(1);
+        // Should not throw.
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
+        Assert.Equal(1, _serviceCollection.Count(x => x.ServiceType == typeof(IAspectConfigurationProvider)));
     }
 
     [Fact]
@@ -176,16 +174,18 @@ public class ServiceCollectionExtensionsTests
     {
         // A keyed IAspectConfigurationProvider is not what GetService<IAspectConfigurationProvider>()
         // resolves; it must not trigger a provider-mismatch throw against a different non-keyed instance.
-        var keyedProvider = new Mock<IAspectConfigurationProvider>().Object;
-        var newProvider = new Mock<IAspectConfigurationProvider>().Object;
+        var keyedProvider = Substitute.For<IAspectConfigurationProvider>();
+        var newProvider = Substitute.For<IAspectConfigurationProvider>();
         _serviceCollection.AddKeyedSingleton<IAspectConfigurationProvider>("aux", keyedProvider);
 
-        Action act = () => _serviceCollection.AddAspectSupport(newProvider);
+        // Should not throw.
+        _serviceCollection.AddAspectSupport(newProvider);
 
-        act.Should().NotThrow();
         // The keyed registration is left intact and the new provider is added as a non-keyed singleton.
-        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService).Should().Be(1);
-        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService).Should().Be(1);
+        Assert.Equal(1,
+            _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService));
+        Assert.Equal(1,
+            _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService));
     }
 
     [Fact]
@@ -193,15 +193,17 @@ public class ServiceCollectionExtensionsTests
     {
         // Same scenario for the fluent overload that calls GetOrAddInMemoryProvider — a keyed
         // provider must not be reused or cause the throw path.
-        var keyedProvider = new Mock<IAspectConfigurationProvider>().Object;
+        var keyedProvider = Substitute.For<IAspectConfigurationProvider>();
         _serviceCollection.AddKeyedSingleton<IAspectConfigurationProvider>("aux", keyedProvider);
 
-        Action act = () => _serviceCollection.AddAspectSupport();
+        // Should not throw.
+        _serviceCollection.AddAspectSupport();
 
-        act.Should().NotThrow();
         // A new non-keyed InMemoryAspectConfigurationProvider is registered alongside the keyed one.
-        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService).Should().Be(1);
-        _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService).Should().Be(1);
+        Assert.Equal(1,
+            _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && !d.IsKeyedService));
+        Assert.Equal(1,
+            _serviceCollection.Count(d => d.ServiceType == typeof(IAspectConfigurationProvider) && d.IsKeyedService));
     }
 
     [Fact]
@@ -211,32 +213,31 @@ public class ServiceCollectionExtensionsTests
         // aspect configured. The proxy factory needs the impl, so DI semantics demand the impl be
         // registered with the same lifetime as the interface — otherwise the proxy resolves a
         // concrete instance with the wrong lifetime.
-        _aspectConfigurationProviderMock
-            .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+        _aspectConfigurationProvider
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))
             .Returns(new AspectConfiguration(ServiceDescriptor.Describe(
                 typeof(ITestInterface), typeof(MyTestInterface), ServiceLifetime.Transient)));
         _serviceCollection.AddSingleton<MyTestInterface>();
         _serviceCollection.AddTransient<ITestInterface, MyTestInterface>();
 
-        Action act = () => _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-
-        act.Should().Throw<InvalidOperationException>()
-            .WithMessage("*already registered with lifetime Singleton*Transient*");
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport(_aspectConfigurationProvider));
+        Assert.Contains("already registered with lifetime Singleton", ex.Message);
+        Assert.Contains("Transient", ex.Message);
     }
 
     [Fact]
     public void ConfigureAspectsAcceptsExistingConcreteRegistrationWithMatchingLifetime()
     {
-        _aspectConfigurationProviderMock
-            .Setup(x => x.GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface)))
+        _aspectConfigurationProvider
+            .GetTypeAspectConfiguration(typeof(ITestInterface), typeof(MyTestInterface))
             .Returns(new AspectConfiguration(ServiceDescriptor.Describe(
                 typeof(ITestInterface), typeof(MyTestInterface), ServiceLifetime.Transient)));
         _serviceCollection.AddTransient<MyTestInterface>();
         _serviceCollection.AddTransient<ITestInterface, MyTestInterface>();
 
-        Action act = () => _serviceCollection.AddAspectSupport(_aspectConfigurationProviderMock.Object);
-
-        act.Should().NotThrow();
+        // Should not throw.
+        _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
     }
 }
 

@@ -1,4 +1,4 @@
-﻿// --------------------------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------------
 // <copyright file="LoggingAspectTests.cs" company="James Consulting LLC">
 //   
 // </copyright>
@@ -11,7 +11,7 @@ using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests.Logging;
@@ -32,34 +32,33 @@ public class LoggingAspectTests
     private readonly ITestInterface _instance;
 
     /// <summary>
-    /// Mock logger that receives generated logging aspect entries.
+    /// Recording logger that receives generated logging aspect entries.
     /// </summary>
-    private readonly Mock<ILogger> _logger;
+    private readonly RecordingLogger _logger;
 
     /// <summary>
-    /// Mock logger factory used to supply <see cref="_logger" /> to the aspect.
+    /// Logger factory substitute used to supply <see cref="_logger" /> to the aspect.
     /// </summary>
-    private readonly Mock<ILoggerFactory> _loggerFactory;
+    private readonly ILoggerFactory _loggerFactory;
 
     /// <summary>
     /// Initializes a logging proxy over the test service.
     /// </summary>
     public LoggingAspectTests()
     {
-        _loggerFactory = new Mock<ILoggerFactory>();
-        _logger = new Mock<ILogger>();
+        _loggerFactory = Substitute.For<ILoggerFactory>();
+        _logger = new RecordingLogger();
         _aspectConfigurationProvider = new InMemoryAspectConfigurationProvider();
         var aspectConfiguration = new AspectConfiguration(new ServiceDescriptor(AspectRegistrationTests.InterfaceType,
             AspectRegistrationTests.MyTestInterfaceType, ServiceLifetime.Transient));
         aspectConfiguration.AddEntry(LoggingAspectFactory.LoggingAspectFactoryType,
             methodsToIntercept: AspectRegistrationTests.InterfaceType.GetMethods());
         _aspectConfigurationProvider.AddEntry(aspectConfiguration);
-        _loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(_logger.Object);
-        _logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
+        _loggerFactory.CreateLogger(typeof(MyTestInterface).FullName!).Returns(_logger);
         _instance = LoggingAspect<ITestInterface>.Create(
             new MyTestInterface(),
             typeof(MyTestInterface),
-            _loggerFactory.Object,
+            _loggerFactory,
             _aspectConfigurationProvider,
             LoggingAspectFactory.LoggingAspectFactoryType);
     }
@@ -71,10 +70,7 @@ public class LoggingAspectTests
     public void MyTestMethod()
     {
         _instance.Test(1, "2", new MyUnitTestClass(1, "2"));
-        _logger.Verify(
-            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-            Times.Exactly(2));
+        Assert.Equal(2, _logger.CountAt(LogLevel.Information));
     }
 
     /// <summary>
@@ -87,10 +83,7 @@ public class LoggingAspectTests
     public async Task TestLoggingAsync()
     {
         await _instance.TestAsync(1, "2", null!);
-        _logger.Verify(
-            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-            Times.Exactly(2));
+        Assert.Equal(2, _logger.CountAt(LogLevel.Information));
     }
 
     /// <summary>
@@ -103,10 +96,7 @@ public class LoggingAspectTests
     public async Task TestLoggingAsyncWithResult()
     {
         await _instance.GetClassByIdAsync(1);
-        _logger.Verify(
-            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)),
-            Times.Exactly(3));
+        Assert.Equal(3, _logger.CountAt(LogLevel.Information));
     }
 
     [Fact]
@@ -115,7 +105,7 @@ public class LoggingAspectTests
         Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
             null!,
             typeof(MyTestInterface),
-            _loggerFactory.Object,
+            _loggerFactory,
             _aspectConfigurationProvider,
             LoggingAspectFactory.LoggingAspectFactoryType));
     }
@@ -126,7 +116,7 @@ public class LoggingAspectTests
         Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
             new MyTestInterface(),
             null!,
-            _loggerFactory.Object,
+            _loggerFactory,
             _aspectConfigurationProvider,
             LoggingAspectFactory.LoggingAspectFactoryType));
     }
@@ -148,7 +138,7 @@ public class LoggingAspectTests
         Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
             new MyTestInterface(),
             typeof(MyTestInterface),
-            _loggerFactory.Object,
+            _loggerFactory,
             null!,
             LoggingAspectFactory.LoggingAspectFactoryType));
     }
@@ -159,7 +149,7 @@ public class LoggingAspectTests
         Assert.Throws<ArgumentNullException>(() => LoggingAspect<ITestInterface>.Create(
             new MyTestInterface(),
             typeof(MyTestInterface),
-            _loggerFactory.Object,
+            _loggerFactory,
             _aspectConfigurationProvider,
             null!));
     }

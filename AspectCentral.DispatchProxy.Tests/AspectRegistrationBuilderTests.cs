@@ -11,7 +11,6 @@ using AspectCentral.Abstractions;
 using AspectCentral.Abstractions.Configuration;
 using AspectCentral.DispatchProxy.Logging;
 using AspectCentral.DispatchProxy.Profiling;
-using FluentAssertions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Xunit;
@@ -34,7 +33,7 @@ public class AspectRegistrationBuilderTests
             .AddLoggingAspect().AddProfilingAspect();
         var aspects = aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].GetAspects();
 
-        aspects.Count().Should().Be(2);
+        Assert.Equal(2, aspects.Count());
     }
 
     /// <summary>
@@ -65,12 +64,12 @@ public class AspectRegistrationBuilderTests
     /// Verifies that aspects cannot be added after services are locked in the builder.
     /// </summary>
     [Fact]
-    public void AddAspectThrowsInvalidOperationExceptionWhenServicesHaveBeenRegistered()
+    public void AddAspectThrowsAspectExceptionWhenServicesHaveBeenRegistered()
     {
         var aspectRegistrationBuilder =
             new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(),
                 new InMemoryAspectConfigurationProvider());
-        Assert.Throws<InvalidOperationException>(() =>
+        Assert.Throws<AspectException>(() =>
             aspectRegistrationBuilder.AddAspect(LoggingAspectFactory.LoggingAspectFactoryType));
     }
 
@@ -82,9 +81,9 @@ public class AspectRegistrationBuilderTests
     {
         var aspectRegistrationBuilder = new ServiceCollection().AddAspectSupport().AddService(typeof(ITestInterface),
                 serviceProvider => new MyTestInterface(), ServiceLifetime.Scoped)
-            .AddAspect(LoggingAspectFactory.LoggingAspectFactoryType, null, typeof(MyTestInterface).GetMethods());
+            .AddAspect(LoggingAspectFactory.LoggingAspectFactoryType, null, typeof(ITestInterface).GetMethods());
         var aspects = aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].GetAspects();
-        aspects.Count().Should().Be(1);
+        Assert.Single(aspects);
     }
 
     /// <summary>
@@ -98,22 +97,23 @@ public class AspectRegistrationBuilderTests
                 new InMemoryAspectConfigurationProvider());
         aspectRegistrationBuilder.AddService(typeof(IAspectFactory), LoggingAspectFactory.LoggingAspectFactoryType,
             ServiceLifetime.Scoped);
-        aspectRegistrationBuilder.Services.Count.Should().Be(2);
-        aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries.Count.Should().Be(1);
-        aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].ServiceDescriptor
-            .ImplementationType.Should().Be(LoggingAspectFactory.LoggingAspectFactoryType);
+        Assert.Equal(2, aspectRegistrationBuilder.Services.Count);
+        Assert.Single(aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries);
+        Assert.Equal(LoggingAspectFactory.LoggingAspectFactoryType,
+            aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].ServiceDescriptor
+                .ImplementationType);
     }
 
     /// <summary>
     /// Verifies that a service registration rejects implementation types that do not implement the service type.
     /// </summary>
     [Fact]
-    public void AddServiceThrowsArgumentNullExceptionWhenImplementationDoesNotImplementService()
+    public void AddServiceThrowsAspectExceptionWhenImplementationDoesNotImplementService()
     {
         var aspectRegistrationBuilder =
             new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(),
                 new InMemoryAspectConfigurationProvider());
-        Assert.Throws<ArgumentException>(() =>
+        Assert.Throws<AspectException>(() =>
             aspectRegistrationBuilder.AddService(typeof(IAspectConfigurationProvider), GetType(),
                 ServiceLifetime.Scoped));
     }
@@ -159,12 +159,12 @@ public class AspectRegistrationBuilderTests
             provider => new LoggingAspectFactory(provider.GetService<ILoggerFactory>()!,
                 provider.GetService<IAspectConfigurationProvider>()!),
             ServiceLifetime.Scoped);
-        aspectRegistrationBuilder.Services.Count.Should().Be(1);
-        aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries.Count.Should().Be(1);
-        aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].ServiceDescriptor
-            .ImplementationFactory.Should().NotBeNull();
-        aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0].ServiceDescriptor
-            .ImplementationType.Should().BeNull();
+        Assert.Single(aspectRegistrationBuilder.Services);
+        Assert.Single(aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries);
+        Assert.NotNull(aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0]
+            .ServiceDescriptor.ImplementationFactory);
+        Assert.Null(aspectRegistrationBuilder.AspectConfigurationProvider.ConfigurationEntries[0]
+            .ServiceDescriptor.ImplementationType);
     }
 
     /// <summary>
@@ -203,7 +203,7 @@ public class AspectRegistrationBuilderTests
         var aspectRegistrationBuilder =
             new DispatchProxyAspectRegistrationBuilder(new ServiceCollection(),
                 new InMemoryAspectConfigurationProvider());
-        aspectRegistrationBuilder.Should().NotBeNull();
+        Assert.NotNull(aspectRegistrationBuilder);
     }
 
     /// <summary>

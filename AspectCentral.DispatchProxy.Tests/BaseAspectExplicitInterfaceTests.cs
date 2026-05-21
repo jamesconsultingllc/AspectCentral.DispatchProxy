@@ -2,7 +2,7 @@ using System.Reflection;
 using AspectCentral.Abstractions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests;
@@ -17,11 +17,10 @@ public class BaseAspectExplicitInterfaceTests
 {
     private static BaseAspectTestClass<IExplicit> CreateAspect()
     {
-        var providerMock = new Mock<IAspectConfigurationProvider>();
-        providerMock
-            .Setup(x => x.ShouldIntercept(It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<MethodInfo>()))
+        var provider = Substitute.For<IAspectConfigurationProvider>();
+        provider
+            .ShouldIntercept(Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<MethodInfo>())
             .Returns(false);
-        var provider = providerMock.Object;
         var config =
             new AspectConfiguration(new ServiceDescriptor(typeof(IExplicit), typeof(ExplicitImpl),
                 ServiceLifetime.Transient));

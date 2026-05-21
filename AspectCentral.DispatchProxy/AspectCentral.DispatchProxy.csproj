@@ -48,14 +48,14 @@
         <None Include="../README.md" Pack="true" PackagePath="/"/>
     </ItemGroup>
     <ItemGroup>
-        <PackageReference Include="AspectCentral.Abstractions" Version="1.0.2"/>
-        <PackageReference Include="JamesConsulting" Version="1.0.1"/>
-        <PackageReference Include="MessagePack" Version="2.5.187"/>
-        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="9.0.2"/>
-        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="9.0.2"/>
-        <PackageReference Include="Microsoft.Extensions.Options" Version="9.0.2"/>
-        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="9.0.2"/>
-        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All"/>
+        <PackageReference Include="AspectCentral.Abstractions" Version="2.0.0-rc.1" />
+        <PackageReference Include="JamesConsulting" Version="2.0.0" />
+        <PackageReference Include="MessagePack" Version="3.1.4" />
+        <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.8" />
+        <PackageReference Include="Microsoft.Extensions.Options" Version="10.0.8" />
+        <PackageReference Include="System.Diagnostics.DiagnosticSource" Version="10.0.8" />
+        <PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="All" />
         <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" Version="3.11.0-beta1.24454.1">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

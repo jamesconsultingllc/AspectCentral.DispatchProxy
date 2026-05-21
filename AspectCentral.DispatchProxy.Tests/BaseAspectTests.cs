@@ -12,7 +12,7 @@ using System.Reflection;
 using AspectCentral.Abstractions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Moq;
+using NSubstitute;
 using Xunit;
 
 namespace AspectCentral.DispatchProxy.Tests;
@@ -31,24 +31,22 @@ public class BaseAspectTests
     private readonly ITestInterface _instance;
 
     /// <summary>
-    /// Mock logger used to verify aspect hook execution.
+    /// Recording logger used to verify aspect hook execution.
     /// </summary>
-    private readonly Mock<ILogger> _logger;
+    private readonly RecordingLogger _logger;
 
     /// <summary>
     /// Initializes a proxy whose aspect short-circuits asynchronous method invocation.
     /// </summary>
     public BaseAspectTests()
     {
-        var loggerFactory = new Mock<ILoggerFactory>();
-        _logger = new Mock<ILogger>();
-        _logger.Setup(x => x.IsEnabled(It.IsAny<LogLevel>())).Returns(true);
-        loggerFactory.Setup(x => x.CreateLogger(typeof(MyTestInterface).FullName!)).Returns(_logger.Object);
-        var aspectConfigurationProviderMock = new Mock<IAspectConfigurationProvider>();
-        aspectConfigurationProviderMock
-            .Setup(x => x.ShouldIntercept(It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<Type>(), It.IsAny<MethodInfo>()))
+        var loggerFactory = Substitute.For<ILoggerFactory>();
+        _logger = new RecordingLogger();
+        loggerFactory.CreateLogger(typeof(MyTestInterface).FullName!).Returns(_logger);
+        var aspectConfigurationProvider = Substitute.For<IAspectConfigurationProvider>();
+        aspectConfigurationProvider
+            .ShouldIntercept(Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<Type>(), Arg.Any<MethodInfo>())
             .Returns(true);
-        var aspectConfigurationProvider = aspectConfigurationProviderMock.Object;
         var aspectConfiguration =
             new AspectConfiguration(new ServiceDescriptor(ITestInterfaceType, MyTestInterface.Type,
                 ServiceLifetime.Transient));
@@ -56,7 +54,7 @@ public class BaseAspectTests
         aspectConfiguration.AddEntry(TestAspectFactory2.Type, methodsToIntercept: ITestInterfaceType.GetMethods());
         aspectConfigurationProvider.AddEntry(aspectConfiguration);
         _instance = BaseAspectTestClass<ITestInterface>.Create(new MyTestInterface(), typeof(MyTestInterface),
-            loggerFactory.Object, aspectConfigurationProvider);
+            loggerFactory, aspectConfigurationProvider);
     }
 
     /// <summary>
@@ -75,9 +73,7 @@ public class BaseAspectTests
         // PostInvoke (1 log "PostInvoke ran after short-circuited async completion"). Total: 2 log calls.
         BaseAspectTestClass<ITestInterface>.LastObservedReturnValueType = null;
         var result = await _instance.GetClassByIdAsync(12);
-        _logger.Verify(
-            x => x.Log(LogLevel.Information, It.IsAny<EventId>(), It.Is<It.IsAnyType>((v, t) => true),
-                It.IsAny<Exception?>(), It.Is<Func<It.IsAnyType, Exception?, string>>((v, t) => true)), Times.Exactly(2));
+        Assert.Equal(2, _logger.CountAt(LogLevel.Information));
         Assert.Equal(new MyUnitTestClass(12, "testing 123"), result);
         // Verify PostInvoke saw the unwrapped TResult (not the Task<TResult> wrapper).
         Assert.Equal(typeof(MyUnitTestClass), BaseAspectTestClass<ITestInterface>.LastObservedReturnValueType);
