@@ -233,6 +233,11 @@ jobs:
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
       - name: Upload signed package artifact
+        # Always upload the signed nupkg so it is available for diagnosis
+        # even when extraction fails. The publish job still won't run on
+        # failure (`needs:` propagates the job-level failure), but humans
+        # can download the .nupkg from this job's artifacts to debug.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
@@ -240,6 +245,9 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
+        # Cert upload is gated on extraction success — if extraction failed
+        # there is no signing-cert-*.cer to upload.
+        if: ${{ steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
@@ -429,6 +437,11 @@ jobs:
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
       - name: Upload signed package artifact
+        # Always upload the signed nupkg so it is available for diagnosis
+        # even when extraction fails. The publish job still won't run on
+        # failure (`needs:` propagates the job-level failure), but humans
+        # can download the .nupkg from this job's artifacts to debug.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
@@ -436,6 +449,9 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
+        # Cert upload is gated on extraction success — if extraction failed
+        # there is no signing-cert-*.cer to upload.
+        if: ${{ steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
