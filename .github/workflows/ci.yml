@@ -211,46 +211,7 @@ jobs:
       - name: Extract signing leaf cert
         id: extract-cert
         shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $nupkg = Get-ChildItem .\artifacts\*.nupkg | Select-Object -First 1
-          if (-not $nupkg) { throw "No signed .nupkg found in .\artifacts" }
-          $zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg.FullName)
-          try {
-            $entry = $zip.GetEntry('.signature.p7s')
-            if (-not $entry) { throw "No .signature.p7s in $($nupkg.Name) — package was not signed" }
-            $ms = New-Object System.IO.MemoryStream
-            $s  = $entry.Open(); $s.CopyTo($ms); $s.Dispose()
-            $sigBytes = $ms.ToArray()
-          } finally { $zip.Dispose() }
-          $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms
-          $cms.Decode($sigBytes)
-          $leaf = $cms.SignerInfos[0].Certificate
-          $ver = '${{ steps.version.outputs.version }}'
-          $cerPath = ".\artifacts\signing-cert-$ver.cer"
-          [System.IO.File]::WriteAllBytes($cerPath, $leaf.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
-          $fp = $leaf.GetCertHashString('SHA256')
-          Write-Host "Leaf cert    : $($leaf.Subject)"
-          Write-Host "SHA-256      : $fp"
-          Write-Host "NotBefore    : $($leaf.NotBefore.ToString('o'))"
-          Write-Host "NotAfter     : $($leaf.NotAfter.ToString('o'))"
-          Write-Host "Wrote        : $cerPath"
-          "fingerprint=$fp" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "cer-path=$cerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          @"
-          ## Signing certificate
-
-          | Field    | Value |
-          |----------|-------|
-          | Subject  | $($leaf.Subject) |
-          | Issuer   | $($leaf.Issuer) |
-          | SHA-256  | ``$fp`` |
-          | Valid    | $($leaf.NotBefore.ToString('u')) → $($leaf.NotAfter.ToString('u')) |
-
-          If nuget.org rejects the package with a fingerprint mismatch, register the
-          ``signing-cert-$ver`` artifact (the ``.cer`` file) at https://www.nuget.org/account/Certificates.
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+        run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
       # ----- NuGet Trusted Publishing (OIDC, no API key) -----
       # NUGET_USER must be the nuget.org USERNAME of the trust-policy CREATOR.
@@ -282,6 +243,8 @@ jobs:
           done
 
       - name: Upload signed package artifact
+        # Upload even if push failed — enables manual recovery via nuget.org UI.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
@@ -290,6 +253,9 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
+        # Run even if the nuget push failed — the .cer is the recovery artifact
+        # for fingerprint-mismatch failures, so we must upload it regardless.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
@@ -397,46 +363,7 @@ jobs:
       - name: Extract signing leaf cert
         id: extract-cert
         shell: pwsh
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
-          $nupkg = Get-ChildItem .\artifacts\*.nupkg | Select-Object -First 1
-          if (-not $nupkg) { throw "No signed .nupkg found in .\artifacts" }
-          $zip = [System.IO.Compression.ZipFile]::OpenRead($nupkg.FullName)
-          try {
-            $entry = $zip.GetEntry('.signature.p7s')
-            if (-not $entry) { throw "No .signature.p7s in $($nupkg.Name) — package was not signed" }
-            $ms = New-Object System.IO.MemoryStream
-            $s  = $entry.Open(); $s.CopyTo($ms); $s.Dispose()
-            $sigBytes = $ms.ToArray()
-          } finally { $zip.Dispose() }
-          $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms
-          $cms.Decode($sigBytes)
-          $leaf = $cms.SignerInfos[0].Certificate
-          $ver = '${{ steps.version.outputs.version }}'
-          $cerPath = ".\artifacts\signing-cert-$ver.cer"
-          [System.IO.File]::WriteAllBytes($cerPath, $leaf.Export([System.Security.Cryptography.X509Certificates.X509ContentType]::Cert))
-          $fp = $leaf.GetCertHashString('SHA256')
-          Write-Host "Leaf cert    : $($leaf.Subject)"
-          Write-Host "SHA-256      : $fp"
-          Write-Host "NotBefore    : $($leaf.NotBefore.ToString('o'))"
-          Write-Host "NotAfter     : $($leaf.NotAfter.ToString('o'))"
-          Write-Host "Wrote        : $cerPath"
-          "fingerprint=$fp" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          "cer-path=$cerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-          @"
-          ## Signing certificate
-
-          | Field    | Value |
-          |----------|-------|
-          | Subject  | $($leaf.Subject) |
-          | Issuer   | $($leaf.Issuer) |
-          | SHA-256  | ``$fp`` |
-          | Valid    | $($leaf.NotBefore.ToString('u')) → $($leaf.NotAfter.ToString('u')) |
-
-          If nuget.org rejects the package with a fingerprint mismatch, register the
-          ``signing-cert-$ver`` artifact (the ``.cer`` file) at https://www.nuget.org/account/Certificates.
-          "@ | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+        run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
       - name: NuGet login (OIDC)
         id: nuget-login
@@ -461,6 +388,8 @@ jobs:
           done
 
       - name: Upload signed package artifact
+        # Upload even if push failed — enables manual recovery via nuget.org UI.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
@@ -469,6 +398,9 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
+        # Run even if the nuget push failed — the .cer is the recovery artifact
+        # for fingerprint-mismatch failures, so we must upload it regardless.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
