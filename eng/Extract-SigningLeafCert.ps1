@@ -8,7 +8,7 @@
   so the same logic isn't duplicated across jobs.
 
   Writes the .cer next to the .nupkg, sets two GitHub Actions step outputs
-  (`fingerprint`, `cer-path`) when $env:GITHUB_OUTPUT is present, and appends
+  (`fingerprint`, `cer_path`) when $env:GITHUB_OUTPUT is present, and appends
   a Markdown summary block to $env:GITHUB_STEP_SUMMARY when present.
 
 .PARAMETER ArtifactsDir
@@ -54,7 +54,13 @@ try {
 
 $cms = New-Object System.Security.Cryptography.Pkcs.SignedCms
 $cms.Decode($sigBytes)
+if ($cms.SignerInfos.Count -lt 1) {
+    throw "Signed CMS in $($nupkg.Name) contains no SignerInfos — cannot extract leaf certificate"
+}
 $leaf = $cms.SignerInfos[0].Certificate
+if (-not $leaf) {
+    throw "First SignerInfo in $($nupkg.Name) has no embedded certificate"
+}
 
 $cerPath = Join-Path $ArtifactsDir "signing-cert-$Version.cer"
 [System.IO.File]::WriteAllBytes(
@@ -70,7 +76,7 @@ Write-Host "Wrote        : $cerPath"
 
 if ($env:GITHUB_OUTPUT) {
     "fingerprint=$fp" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
-    "cer-path=$cerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+    "cer_path=$cerPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 }
 
 if ($env:GITHUB_STEP_SUMMARY) {

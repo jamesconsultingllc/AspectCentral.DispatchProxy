@@ -244,7 +244,9 @@ jobs:
 
       - name: Upload signed package artifact
         # Upload even if push failed — enables manual recovery via nuget.org UI.
-        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
+        # Not gated on extract-cert: the signed nupkg is the primary recovery
+        # artifact and must always be available, even if cert extraction fails.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
@@ -389,7 +391,9 @@ jobs:
 
       - name: Upload signed package artifact
         # Upload even if push failed — enables manual recovery via nuget.org UI.
-        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
+        # Not gated on extract-cert: the signed nupkg is the primary recovery
+        # artifact and must always be available, even if cert extraction fails.
+        if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
