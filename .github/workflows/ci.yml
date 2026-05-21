@@ -130,7 +130,7 @@ jobs:
   publish-rc:
     name: Sign & Publish RC
     needs: build-test
-    if: startsWith(github.ref, 'refs/heads/release/')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
     runs-on: windows-latest  # Azure code-signing clients (sign / Trusted Signing) call Windows-only APIs.
     environment: release
 
@@ -238,7 +238,7 @@ jobs:
   publish-stable:
     name: Sign & Publish Stable
     needs: build-test
-    if: startsWith(github.ref, 'refs/tags/v')
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
     environment: release
 

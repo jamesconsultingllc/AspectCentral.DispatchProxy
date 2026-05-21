@@ -522,8 +522,9 @@ satisfies the nuget.org Trusted Publishing policy, and gates secret access). Con
 shared at the **org level**:
 
 - **Org secrets:** `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `NUGET_USER`
+  (and optionally `SONAR_TOKEN` when SonarCloud analysis is enabled)
 - **Org variables:** `TRUSTED_SIGNING_ENDPOINT`, `TRUSTED_SIGNING_ACCOUNT`, `TRUSTED_SIGNING_PROFILE`
-  (and optionally `SONAR_PROJECT_KEY`)
+  (and optionally `SONAR_PROJECT_KEY` and `SONAR_ORG` when SonarCloud analysis is enabled)
 
 The Entra app registration backing `AZURE_CLIENT_ID` needs a federated credential whose
 subject is `repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release`.
