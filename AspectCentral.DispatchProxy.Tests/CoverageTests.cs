@@ -251,7 +251,7 @@ public class CoverageTests
         var proxy = dpBuilder.InvokeCreateFactory(sp, configuration);
 
         Assert.NotNull(proxy);
-        Assert.IsAssignableFrom<ITestInterface>(proxy);
+        Assert.IsType<ITestInterface>(proxy, exactMatch: false);
     }
 
     [Fact]
@@ -275,6 +275,6 @@ public class CoverageTests
         var proxy = dpBuilder.InvokeCreateFactory(sp, configuration);
 
         Assert.NotNull(proxy);
-        Assert.IsAssignableFrom<ITestInterface>(proxy);
+        Assert.IsType<ITestInterface>(proxy, exactMatch: false);
     }
 }
