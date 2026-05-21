@@ -152,7 +152,6 @@ jobs:
 
     outputs:
       version: ${{ steps.version.outputs.version }}
-      cert-uploaded: ${{ steps.extract-cert.outcome }}
 
     steps:
       - name: Checkout
@@ -226,10 +225,10 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
-        # Non-blocking: cert extraction is a recovery aid. If parsing the
-        # .signature.p7s ever fails the .cer upload below is skipped, but
-        # the signed .nupkg is still uploaded so the publish job can proceed.
-        continue-on-error: true
+        # Required: the .cer is the artifact a human reviewer downloads to
+        # verify the signing leaf before approving the publish job. If
+        # extraction fails the whole publish must fail — we don't want to
+        # ship to nuget.org without the operator having a chance to verify.
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
@@ -241,7 +240,6 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
-        if: ${{ steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
@@ -277,6 +275,12 @@ jobs:
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: published-${{ needs.sign-rc.outputs.version }}
+          path: ./artifacts
+
+      - name: Download signing cert artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: signing-cert-${{ needs.sign-rc.outputs.version }}
           path: ./artifacts
 
       # ----- NuGet Trusted Publishing (OIDC, no API key) -----
@@ -331,7 +335,6 @@ jobs:
 
     outputs:
       version: ${{ steps.version.outputs.version }}
-      cert-uploaded: ${{ steps.extract-cert.outcome }}
 
     steps:
       - name: Checkout
@@ -418,10 +421,10 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
-        # Non-blocking: cert extraction is a recovery aid. If parsing the
-        # .signature.p7s ever fails the .cer upload below is skipped, but
-        # the signed .nupkg is still uploaded so the publish job can proceed.
-        continue-on-error: true
+        # Required: the .cer is the artifact a human reviewer downloads to
+        # verify the signing leaf before approving the publish job. If
+        # extraction fails the whole publish must fail — we don't want to
+        # ship to nuget.org without the operator having a chance to verify.
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
@@ -433,7 +436,6 @@ jobs:
           retention-days: 90
 
       - name: Upload signing certificate artifact
-        if: ${{ steps.extract-cert.outcome == 'success' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signing-cert-${{ steps.version.outputs.version }}
@@ -446,19 +448,21 @@ jobs:
   # in the run UI: download the signing-cert artifact, archive/verify it,
   # then click Approve to push to nuget.org and create the GitHub Release.
   #
-  # ⚠️ INFRA SETUP REQUIRED before this job can succeed:
+  # ⚠️ REQUIRED infra setup before this job can succeed:
   #   1. Create GitHub environment `release-publish` (Settings → Environments)
-  #      with a required reviewer (the user who approves stable releases).
-  #   2. Add an Azure federated credential with subject
-  #        repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release-publish
-  #      (issuer https://token.actions.githubusercontent.com,
-  #       audience api://AzureADTokenExchange).
-  #      This is only needed if you ever extend this job with Azure auth;
-  #      currently it doesn't, but adding the cred is harmless and future-proofs.
-  #   3. Add a NuGet.org Trusted Publishing policy whose subject claim
+  #      with a required reviewer (the user who approves releases).
+  #   2. Add a NuGet.org Trusted Publishing policy whose subject claim
   #      matches the new environment (or update the existing policy from
   #      `environment:release` to allow both `release` and `release-publish`).
   #      Without this update the `dotnet nuget push` call will return 401.
+  #
+  # Optional / future:
+  #   * Add an Azure federated credential with subject
+  #       repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release-publish
+  #     (issuer https://token.actions.githubusercontent.com, audience
+  #     api://AzureADTokenExchange) ONLY if a future iteration of this job
+  #     needs to call Azure (e.g., adding Trusted Signing here too). Today
+  #     this job has no Azure auth, so the credential is not required.
   # ─────────────────────────────────────────────────────────────────────────
   publish-stable:
     name: Publish Stable (gated)
@@ -489,11 +493,7 @@ jobs:
           name: published-${{ needs.sign-stable.outputs.version }}
           path: ./artifacts
 
-      - name: Download signing cert artifact (best-effort)
-        # If sign-stable's cert extraction failed there is no artifact to
-        # download. Don't fail the publish over that — the .nupkg is signed
-        # regardless and is the canonical recovery artifact.
-        if: ${{ needs.sign-stable.outputs.cert-uploaded == 'success' }}
+      - name: Download signing cert artifact
         uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
         with:
           name: signing-cert-${{ needs.sign-stable.outputs.version }}
