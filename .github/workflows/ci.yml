@@ -4,11 +4,17 @@ name: CI
 # Publishing can match on a stable filename).
 #
 #   - Push to any tracked branch / PR / workflow_dispatch -> build-test only
-#   - Push to release/**                                  -> build-test + publish-rc
+#   - Push to release/**                                  -> build-test + sign-rc
+#                                                            (then publish-rc gated on `release-publish` env approval)
 #                                                            (version: <prefix>-rc.<run_number>)
-#   - Push tag v*                                         -> build-test + publish-stable
+#   - Push tag v*                                         -> build-test + sign-stable
+#                                                            (then publish-stable gated on `release-publish` env approval)
 #                                                            (version: <prefix>; tag must equal csproj VersionPrefix
 #                                                             AND commit must be reachable from the stable branch)
+#
+# Both publish jobs pause for human review so the signing leaf cert can be
+# downloaded from the run artifacts and verified before the package goes
+# live on nuget.org. Approve via the run's "Review deployments" panel.
 on:
   push:
     branches: [develop, main, master, 'feature/**', 'release/**', 'hotfix/**']
@@ -125,18 +131,25 @@ jobs:
           retention-days: 7
 
   # ─────────────────────────────────────────────────────────────────────────
-  # RC publish — release/** branches only. Only runs after build-test passes.
+  # RC sign — release/** branches only. Signs the nupkg and uploads it (and
+  # the signing leaf cert) as workflow artifacts. Does NOT publish to
+  # nuget.org — that's gated on the `release-publish` environment in
+  # `publish-rc` below so a human can verify the cert artifact and approve.
   # ─────────────────────────────────────────────────────────────────────────
-  publish-rc:
-    name: Sign & Publish RC
+  sign-rc:
+    name: Sign RC
     needs: build-test
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/heads/release/')
     runs-on: windows-latest  # Azure code-signing clients (sign / Trusted Signing) call Windows-only APIs.
-    environment: release
+    environment: release  # Subject claim required by Azure federated credential.
 
     permissions:
-      id-token: write   # Required for OIDC (azure/login + NuGet/login)
+      id-token: write   # Required for OIDC (azure/login)
       contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      cert-uploaded: ${{ steps.extract-cert.outcome }}
 
     steps:
       - name: Checkout
@@ -163,7 +176,7 @@ jobs:
           fi
           VERSION="${PREFIX}-rc.${{ github.run_number }}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing $VERSION (rc) from $PACKAGE_PROJECT"
+          echo "Signing $VERSION (rc) from $PACKAGE_PROJECT"
 
       - name: Restore
         run: dotnet restore $env:SOLUTION
@@ -210,16 +223,63 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
-        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
-        # If parsing the .signature.p7s ever fails (unexpected CMS format,
-        # missing signer, etc.) we still want to publish the package; the
-        # .cer upload (gated below) just gets skipped for that run.
+        # Non-blocking: cert extraction is a recovery aid. If parsing the
+        # .signature.p7s ever fails the .cer upload below is skipped, but
+        # the signed .nupkg is still uploaded so the publish job can proceed.
         continue-on-error: true
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
+      - name: Upload signed package artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-${{ steps.version.outputs.version }}
+          path: ./artifacts/*.nupkg
+          retention-days: 90
+
+      - name: Upload signing certificate artifact
+        if: ${{ steps.extract-cert.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signing-cert-${{ steps.version.outputs.version }}
+          path: ./artifacts/signing-cert-*.cer
+          retention-days: 90
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # RC publish — gated on `release-publish` environment with a required
+  # reviewer. After `sign-rc` completes you'll see "Review deployments" in
+  # the run UI: download the signing-cert artifact, verify the leaf cert
+  # matches the expected fingerprint, then click Approve to push to nuget.org.
+  # See infra-setup notes on `publish-stable` below.
+  # ─────────────────────────────────────────────────────────────────────────
+  publish-rc:
+    name: Publish RC (gated)
+    needs: sign-rc
+    runs-on: windows-latest
+    environment: release-publish  # Required reviewer gate happens here.
+
+    permissions:
+      id-token: write   # Required for NuGet/login OIDC
+      contents: read
+
+    steps:
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Download signed package artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: published-${{ needs.sign-rc.outputs.version }}
+          path: ./artifacts
+
       # ----- NuGet Trusted Publishing (OIDC, no API key) -----
       # NUGET_USER must be the nuget.org USERNAME of the trust-policy CREATOR.
+      # The trust policy must allow subject claim:
+      #   repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release-publish
       - name: NuGet login (OIDC)
         id: nuget-login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
@@ -247,42 +307,28 @@ jobs:
               --skip-duplicate
           done
 
-      - name: Upload signed package artifact
-        # Upload even if push failed — enables manual recovery via nuget.org UI.
-        # Not gated on extract-cert: the signed nupkg is the primary recovery
-        # artifact and must always be available, even if cert extraction fails.
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: published-${{ steps.version.outputs.version }}
-          path: |
-            ./artifacts/*.nupkg
-          retention-days: 90
-
-      - name: Upload signing certificate artifact
-        # Run even if the nuget push failed — the .cer is the recovery artifact
-        # for fingerprint-mismatch failures, so we must upload it regardless.
-        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: signing-cert-${{ steps.version.outputs.version }}
-          path: ./artifacts/signing-cert-*.cer
-          retention-days: 90  # GitHub Actions caps public-repo retention at 90 days; private repos may extend up to 400 via repo settings
-
   # ─────────────────────────────────────────────────────────────────────────
-  # Stable publish — only on v* tags. Verifies tag matches csproj VersionPrefix
-  # and that the tagged commit is reachable from $STABLE_BRANCH.
+  # Stable sign — only on v* tags. Verifies tag matches csproj VersionPrefix
+  # and that the tagged commit is reachable from $STABLE_BRANCH. Signs the
+  # nupkg and uploads it (and the signing leaf cert) as workflow artifacts.
+  # Does NOT publish to nuget.org or create a GitHub Release — those are
+  # gated on a separate environment in `publish-stable` below so a human
+  # can pull the cert artifact, archive/verify it, and approve the push.
   # ─────────────────────────────────────────────────────────────────────────
-  publish-stable:
-    name: Sign & Publish Stable
+  sign-stable:
+    name: Sign Stable
     needs: build-test
     if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
     runs-on: windows-latest
-    environment: release
+    environment: release  # Subject claim required by Azure federated credential.
 
     permissions:
-      id-token: write
-      contents: write  # Required by softprops/action-gh-release. RC job does not get this.
+      id-token: write   # Required for OIDC to Azure Trusted Signing
+      contents: read
+
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      cert-uploaded: ${{ steps.extract-cert.outcome }}
 
     steps:
       - name: Checkout
@@ -327,7 +373,7 @@ jobs:
           fi
 
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "Publishing $VERSION (stable) from $PACKAGE_PROJECT"
+          echo "Signing $VERSION (stable) from $PACKAGE_PROJECT"
 
       - name: Restore
         run: dotnet restore $env:SOLUTION
@@ -369,13 +415,86 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
-        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
-        # If parsing the .signature.p7s ever fails (unexpected CMS format,
-        # missing signer, etc.) we still want to publish the package; the
-        # .cer upload (gated below) just gets skipped for that run.
+        # Non-blocking: cert extraction is a recovery aid. If parsing the
+        # .signature.p7s ever fails the .cer upload below is skipped, but
+        # the signed .nupkg is still uploaded so the publish job can proceed.
         continue-on-error: true
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
+
+      - name: Upload signed package artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: published-${{ steps.version.outputs.version }}
+          path: ./artifacts/*.nupkg
+          retention-days: 90
+
+      - name: Upload signing certificate artifact
+        if: ${{ steps.extract-cert.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signing-cert-${{ steps.version.outputs.version }}
+          path: ./artifacts/signing-cert-*.cer
+          retention-days: 90
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Stable publish — gated on `release-publish` environment with a required
+  # reviewer. After `sign-stable` completes you'll see "Review deployments"
+  # in the run UI: download the signing-cert artifact, archive/verify it,
+  # then click Approve to push to nuget.org and create the GitHub Release.
+  #
+  # ⚠️ INFRA SETUP REQUIRED before this job can succeed:
+  #   1. Create GitHub environment `release-publish` (Settings → Environments)
+  #      with a required reviewer (the user who approves stable releases).
+  #   2. Add an Azure federated credential with subject
+  #        repo:jamesconsultingllc/AspectCentral.DispatchProxy:environment:release-publish
+  #      (issuer https://token.actions.githubusercontent.com,
+  #       audience api://AzureADTokenExchange).
+  #      This is only needed if you ever extend this job with Azure auth;
+  #      currently it doesn't, but adding the cred is harmless and future-proofs.
+  #   3. Add a NuGet.org Trusted Publishing policy whose subject claim
+  #      matches the new environment (or update the existing policy from
+  #      `environment:release` to allow both `release` and `release-publish`).
+  #      Without this update the `dotnet nuget push` call will return 401.
+  # ─────────────────────────────────────────────────────────────────────────
+  publish-stable:
+    name: Publish Stable (gated)
+    needs: sign-stable
+    runs-on: windows-latest
+    environment: release-publish  # Required reviewer gate happens here.
+
+    permissions:
+      id-token: write
+      contents: write  # Required by softprops/action-gh-release.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+
+      - name: Download signed package artifact
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: published-${{ needs.sign-stable.outputs.version }}
+          path: ./artifacts
+
+      - name: Download signing cert artifact (best-effort)
+        # If sign-stable's cert extraction failed there is no artifact to
+        # download. Don't fail the publish over that — the .nupkg is signed
+        # regardless and is the canonical recovery artifact.
+        if: ${{ needs.sign-stable.outputs.cert-uploaded == 'success' }}
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: signing-cert-${{ needs.sign-stable.outputs.version }}
+          path: ./artifacts
 
       - name: NuGet login (OIDC)
         id: nuget-login
@@ -399,32 +518,10 @@ jobs:
               --skip-duplicate
           done
 
-      - name: Upload signed package artifact
-        # Upload even if push failed — enables manual recovery via nuget.org UI.
-        # Not gated on extract-cert: the signed nupkg is the primary recovery
-        # artifact and must always be available, even if cert extraction fails.
-        if: always()
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: published-${{ steps.version.outputs.version }}
-          path: |
-            ./artifacts/*.nupkg
-          retention-days: 90
-
-      - name: Upload signing certificate artifact
-        # Run even if the nuget push failed — the .cer is the recovery artifact
-        # for fingerprint-mismatch failures, so we must upload it regardless.
-        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: signing-cert-${{ steps.version.outputs.version }}
-          path: ./artifacts/signing-cert-*.cer
-          retention-days: 90
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
-          tag_name: v${{ steps.version.outputs.version }}
+          tag_name: v${{ needs.sign-stable.outputs.version }}
           generate_release_notes: true
           files: |
             ./artifacts/*.nupkg
