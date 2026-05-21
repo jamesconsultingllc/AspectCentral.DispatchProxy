@@ -20,6 +20,13 @@ public class DispatchProxyAspectRegistrationBuilder(
     /// Cached <see cref="MethodInfo" /> for the private generic factory method used to build
     /// proxy instances after aspects have been registered fluently.
     /// </summary>
+    /// <remarks>
+    /// <c>BindingFlags.NonPublic</c> is intentional: <c>CreateFactory&lt;TService&gt;</c> is a private
+    /// generic invoked by <see cref="InvokeCreateFactory" /> after closing it over the runtime
+    /// <c>TService</c>. It is not API.
+    /// </remarks>
+    [SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields",
+        Justification = "Intentional: CreateFactory<TService> is a private generic factory closed over runtime TService in InvokeCreateFactory; it is not API.")]
     private static readonly MethodInfo CreateFactoryMethodInfo =
         typeof(DispatchProxyAspectRegistrationBuilder).GetMethod(nameof(CreateFactory),
             BindingFlags.Static | BindingFlags.NonPublic)!;
@@ -74,10 +81,9 @@ public class DispatchProxyAspectRegistrationBuilder(
                 ? (TService)f.GetRequiredService(aspectConfiguration.ServiceDescriptor.ImplementationType)
                 : instance!;
 
-        foreach (var aspect in aspectConfiguration.GetAspects())
+        foreach (var aspectType in aspectConfiguration.GetAspects().Select(a => a.AspectType))
         {
             var temp = factory;
-            var aspectType = aspect.AspectType;
             factory = f =>
             {
                 var interceptorFactory = (IAspectFactory)f.GetRequiredService(aspectType);

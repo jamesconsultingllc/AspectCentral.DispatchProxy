@@ -28,6 +28,14 @@ public static class ServiceCollectionExtensions
     /// Cached <see cref="MethodInfo" /> for the private generic <c>CreateFactory&lt;TService&gt;</c>
     /// used to construct the aspect chain at service-resolution time.
     /// </summary>
+    /// <remarks>
+    /// <c>BindingFlags.NonPublic</c> is intentional: <c>CreateFactory&lt;TService&gt;</c> is a private
+    /// static generic invoked by <see cref="InvokeCreateFactory" /> after closing it over the
+    /// runtime <c>TService</c>. Exposing it publicly would not be safe — it's a DI factory
+    /// callback, not an API.
+    /// </remarks>
+    [SuppressMessage("Major Code Smell", "S3011:Reflection should not be used to increase accessibility of classes, methods, or fields",
+        Justification = "Intentional: CreateFactory<TService> is a private generic factory closed over runtime TService in InvokeCreateFactory; it is not API.")]
     private static readonly MethodInfo CreateFactoryMethodInfo =
         typeof(ServiceCollectionExtensions).GetMethod(nameof(CreateFactory),
             BindingFlags.Static | BindingFlags.NonPublic)!;
@@ -278,10 +286,9 @@ public static class ServiceCollectionExtensions
         Func<IServiceProvider, TService> factory = f =>
             (TService)f.GetRequiredService(aspectConfiguration.ServiceDescriptor.ImplementationType!);
 
-        foreach (var aspect in aspectConfiguration.GetAspects())
+        foreach (var aspectType in aspectConfiguration.GetAspects().Select(a => a.AspectType))
         {
             var temp = factory;
-            var aspectType = aspect.AspectType;
             factory = f =>
             {
                 var interceptorFactory = (IAspectFactory)f.GetRequiredService(aspectType);
@@ -325,6 +332,38 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Scans the supplied assemblies for concrete <see cref="IAspectFactory" /> implementations and
+    /// registers each as a singleton (idempotent via <c>TryAddSingleton</c>). Assemblies that fail
+    /// <see cref="System.Reflection.Assembly.GetTypes" /> with a <see cref="ReflectionTypeLoadException" />
+    /// contribute whatever non-null types the runtime managed to load.
+    /// </summary>
+    [ExcludeFromCodeCoverage]
+    private static IServiceCollection RegisterAspectFactories(this IServiceCollection serviceCollection,
+        Assembly[] assembliesToScan)
+    {
+        var types = assembliesToScan
+            .SelectMany(assembly =>
+            {
+                try
+                {
+                    return assembly.GetTypes();
+                }
+                catch (ReflectionTypeLoadException ex)
+                {
+                    return ex.Types.Where(t => t != null)!;
+                }
+            })
+            .Where(type => type != null && !type.IsAbstract && !type.IsInterface &&
+                           Constants.IAspectFactoryType.IsAssignableFrom(type))
+            .Select(type => type!);
+
+        foreach (var type in types)
+            serviceCollection.TryAddSingleton(type);
+
+        return serviceCollection;
+    }
+
+    /// <summary>
     /// Returns the already-registered singleton <see cref="IAspectConfigurationProvider" />
     /// instance from <paramref name="serviceCollection" /> if one exists, otherwise registers a
     /// new <see cref="InMemoryAspectConfigurationProvider" /> as a singleton instance and returns
@@ -360,37 +399,5 @@ public static class ServiceCollectionExtensions
         var provider = new InMemoryAspectConfigurationProvider();
         serviceCollection.AddSingleton<IAspectConfigurationProvider>(provider);
         return provider;
-    }
-
-    /// <summary>
-    /// Scans the supplied assemblies for concrete <see cref="IAspectFactory" /> implementations and
-    /// registers each as a singleton (idempotent via <c>TryAddSingleton</c>). Assemblies that fail
-    /// <see cref="System.Reflection.Assembly.GetTypes" /> with a <see cref="ReflectionTypeLoadException" />
-    /// contribute whatever non-null types the runtime managed to load.
-    /// </summary>
-    [ExcludeFromCodeCoverage]
-    private static IServiceCollection RegisterAspectFactories(this IServiceCollection serviceCollection,
-        Assembly[] assembliesToScan)
-    {
-        var types = assembliesToScan
-            .SelectMany(assembly =>
-            {
-                try
-                {
-                    return assembly.GetTypes();
-                }
-                catch (ReflectionTypeLoadException ex)
-                {
-                    return ex.Types.Where(t => t != null)!;
-                }
-            })
-            .Where(type => type != null && !type.IsAbstract && !type.IsInterface &&
-                           Constants.IAspectFactoryType.IsAssignableFrom(type));
-
-        foreach (var type in types)
-            if (type != null)
-                serviceCollection.TryAddSingleton(type);
-
-        return serviceCollection;
     }
 }

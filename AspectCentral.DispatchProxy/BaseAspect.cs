@@ -249,60 +249,7 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
 
         try
         {
-            if (ShouldIntercept(aspectContext))
-            {
-                PreInvoke(aspectContext);
-
-                if (aspectContext.InvokeMethod)
-                {
-                    AspectLogs.InvokingWithInterception(Logger, aspectContext.InvocationString ?? "Unknown");
-                    Invoke(aspectContext);
-                    // For async methods, PostInvoke is wired into the task continuation by
-                    // ProcessAction / CallProcessFunction (via BaseAspectAsyncProcessor). For sync
-                    // methods, PostInvoke must be invoked here.
-                    if (!isAsync) PostInvoke(aspectContext);
-                }
-                else if (isAsync && aspectContext.ReturnValue is Task shortCircuitTask)
-                {
-                    // Async short-circuit: the aspect supplied a Task return value without invoking
-                    // the target. Wire PostInvoke through the same async machinery as the normal
-                    // intercepted path so PostInvoke observes the unwrapped TResult (not the
-                    // Task<TResult> wrapper) and so cleanup reliably runs in the task's continuation.
-                    var taskType = shortCircuitTask.GetType();
-                    if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
-                    {
-                        var resultType = taskType.GetGenericArguments()[0];
-                        var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
-                        aspectContext.ReturnValue = mi.Invoke(
-                            null,
-                            BindingFlags.DoNotWrapExceptions,
-                            binder: null,
-                            parameters: [shortCircuitTask, aspectContext, (Action<AspectContext>)PostInvoke],
-                            culture: null);
-                    }
-                    else
-                    {
-                        // Non-generic Task — no result to unwrap; just attach PostInvoke.
-                        var ctx = aspectContext;
-                        shortCircuitTask.ContinueWith(
-                            _ => PostInvoke(ctx),
-                            CancellationToken.None,
-                            TaskContinuationOptions.ExecuteSynchronously,
-                            TaskScheduler.Default);
-                    }
-                }
-                else
-                {
-                    // Sync short-circuit, or async short-circuit with no Task supplied. Run PostInvoke
-                    // immediately so aspects can reliably perform cleanup.
-                    PostInvoke(aspectContext);
-                }
-            }
-            else
-            {
-                AspectLogs.InvokingWithoutInterception(Logger, aspectContext.InvocationString ?? "Unknown");
-                InvokeWithoutInterception(aspectContext);
-            }
+            DispatchInvocation(aspectContext, isAsync);
 
             if (isAsync && aspectContext.ReturnValue is Task taskResult)
             {
@@ -323,6 +270,88 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             CompleteError(activity, sw, ex);
             throw;
         }
+    }
+
+    /// <summary>
+    /// Routes the invocation to either the intercepted or pass-through path based on
+    /// <see cref="ShouldIntercept" />. Extracted from <see cref="Invoke(System.Reflection.MethodInfo, object[])" />
+    /// to keep its cognitive complexity below the Sonar S3776 threshold.
+    /// </summary>
+    private void DispatchInvocation(AspectContext aspectContext, bool isAsync)
+    {
+        if (ShouldIntercept(aspectContext))
+        {
+            DispatchIntercepted(aspectContext, isAsync);
+        }
+        else
+        {
+            AspectLogs.InvokingWithoutInterception(Logger, aspectContext.InvocationString ?? "Unknown");
+            InvokeWithoutInterception(aspectContext);
+        }
+    }
+
+    /// <summary>
+    /// Runs the aspect's <see cref="PreInvoke" />, dispatches to the target (or honors a
+    /// short-circuit), and wires <see cref="PostInvoke" /> appropriately for sync vs async paths.
+    /// </summary>
+    private void DispatchIntercepted(AspectContext aspectContext, bool isAsync)
+    {
+        PreInvoke(aspectContext);
+
+        if (aspectContext.InvokeMethod)
+        {
+            AspectLogs.InvokingWithInterception(Logger, aspectContext.InvocationString ?? "Unknown");
+            Invoke(aspectContext);
+            // For async methods, PostInvoke is wired into the task continuation by
+            // ProcessAction / CallProcessFunction (via BaseAspectAsyncProcessor). For sync
+            // methods, PostInvoke must be invoked here.
+            if (!isAsync) PostInvoke(aspectContext);
+            return;
+        }
+
+        if (isAsync && aspectContext.ReturnValue is Task shortCircuitTask)
+        {
+            // Async short-circuit: the aspect supplied a Task return value without invoking
+            // the target. Wire PostInvoke through the same async machinery as the normal
+            // intercepted path so PostInvoke observes the unwrapped TResult (not the
+            // Task<TResult> wrapper) and so cleanup reliably runs in the task's continuation.
+            HandleAsyncShortCircuit(aspectContext, shortCircuitTask);
+            return;
+        }
+
+        // Sync short-circuit, or async short-circuit with no Task supplied. Run PostInvoke
+        // immediately so aspects can reliably perform cleanup.
+        PostInvoke(aspectContext);
+    }
+
+    /// <summary>
+    /// Handles an async short-circuit: routes <see cref="Task{TResult}" /> results through the
+    /// generic async processor so <see cref="PostInvoke" /> observes the unwrapped result, and
+    /// attaches a continuation for non-generic <see cref="Task" /> results.
+    /// </summary>
+    private void HandleAsyncShortCircuit(AspectContext aspectContext, Task shortCircuitTask)
+    {
+        var taskType = shortCircuitTask.GetType();
+        if (taskType.IsGenericType && taskType.GetGenericTypeDefinition() == typeof(Task<>))
+        {
+            var resultType = taskType.GetGenericArguments()[0];
+            var mi = BaseAspectAsyncProcessor.ProcessFunctionMethodInfo.MakeGenericMethod(resultType);
+            aspectContext.ReturnValue = mi.Invoke(
+                null,
+                BindingFlags.DoNotWrapExceptions,
+                binder: null,
+                parameters: [shortCircuitTask, aspectContext, (Action<AspectContext>)PostInvoke],
+                culture: null);
+            return;
+        }
+
+        // Non-generic Task — no result to unwrap; just attach PostInvoke.
+        var ctx = aspectContext;
+        shortCircuitTask.ContinueWith(
+            _ => PostInvoke(ctx),
+            CancellationToken.None,
+            TaskContinuationOptions.ExecuteSynchronously,
+            TaskScheduler.Default);
     }
 
     /// <summary>
