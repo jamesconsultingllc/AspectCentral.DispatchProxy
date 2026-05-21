@@ -41,12 +41,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0  # Sonar requires full history for blame / new-code detection
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: |
             9.0.x
@@ -54,7 +54,7 @@ jobs:
 
       - name: Setup Java (Sonar scanner requires JRE)
         if: ${{ vars.SONAR_PROJECT_KEY != '' }}
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@be666c2fcd27ec809703dec50e508c2fdc7f6654 # v5.2.0
         with:
           distribution: temurin
           java-version: '17'
@@ -110,7 +110,7 @@ jobs:
             -p:VersionSuffix="ci.${{ github.run_number }}"
 
       - name: Upload nupkg artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: nupkg-${{ github.run_number }}
           path: ./artifacts/*.nupkg
@@ -118,7 +118,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: test-results-${{ github.run_number }}
           path: '**/TestResults/**/*.trx'
@@ -140,12 +140,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: |
             9.0.x
@@ -188,7 +188,7 @@ jobs:
       #   Issuer:   https://token.actions.githubusercontent.com
       #   Audience: api://AzureADTokenExchange
       - name: Azure login (OIDC)
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -208,6 +208,16 @@ jobs:
             --base-directory "$(Get-Location)\artifacts" `
             "*.nupkg"
 
+      - name: Extract signing leaf cert
+        id: extract-cert
+        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
+        # If parsing the .signature.p7s ever fails (unexpected CMS format,
+        # missing signer, etc.) we still want to publish the package; the
+        # .cer upload (gated below) just gets skipped for that run.
+        continue-on-error: true
+        shell: pwsh
+        run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
+
       # ----- NuGet Trusted Publishing (OIDC, no API key) -----
       # NUGET_USER must be the nuget.org USERNAME of the trust-policy CREATOR.
       - name: NuGet login (OIDC)
@@ -219,17 +229,45 @@ jobs:
       - name: Push to nuget.org
         shell: bash
         run: |
-          dotnet nuget push ./artifacts/*.nupkg \
-            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+          set -euo pipefail
+          # `dotnet nuget push` does not expand globs and bash does not
+          # expand them inside double quotes — enumerate explicitly with
+          # `compgen -G` (which handles "no matches" without erroring under
+          # `set -e`) and push each file individually. `--skip-duplicate`
+          # keeps the job idempotent across retries.
+          mapfile -t NUPKGS < <(compgen -G "./artifacts/*.nupkg" || true)
+          if [ "${#NUPKGS[@]}" -eq 0 ]; then
+            echo "::error::No .nupkg files found in ./artifacts to push."
+            exit 1
+          fi
+          for pkg in "${NUPKGS[@]}"; do
+            dotnet nuget push "$pkg" \
+              --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
 
       - name: Upload signed package artifact
-        uses: actions/upload-artifact@v4
+        # Upload even if push failed — enables manual recovery via nuget.org UI.
+        # Not gated on extract-cert: the signed nupkg is the primary recovery
+        # artifact and must always be available, even if cert extraction fails.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
-          path: ./artifacts/*.nupkg
+          path: |
+            ./artifacts/*.nupkg
           retention-days: 90
+
+      - name: Upload signing certificate artifact
+        # Run even if the nuget push failed — the .cer is the recovery artifact
+        # for fingerprint-mismatch failures, so we must upload it regardless.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signing-cert-${{ steps.version.outputs.version }}
+          path: ./artifacts/signing-cert-*.cer
+          retention-days: 90  # GitHub Actions caps public-repo retention at 90 days; private repos may extend up to 400 via repo settings
 
   # ─────────────────────────────────────────────────────────────────────────
   # Stable publish — only on v* tags. Verifies tag matches csproj VersionPrefix
@@ -248,12 +286,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@c2fa09f4bde5ebb9d1777cf28262a3eb3db3ced7 # v5.2.0
         with:
           dotnet-version: |
             9.0.x
@@ -309,7 +347,7 @@ jobs:
             -p:Version=${{ steps.version.outputs.version }}
 
       - name: Azure login (OIDC)
-        uses: azure/login@a457da9ea143d694b1b9c7c869ebb04ebe844ef5 # v2.3.0
+        uses: azure/login@532459ea530d8321f2fb9bb10d1e0bcf23869a43 # v3.0.0
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -329,6 +367,16 @@ jobs:
             --base-directory "$(Get-Location)\artifacts" `
             "*.nupkg"
 
+      - name: Extract signing leaf cert
+        id: extract-cert
+        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
+        # If parsing the .signature.p7s ever fails (unexpected CMS format,
+        # missing signer, etc.) we still want to publish the package; the
+        # .cer upload (gated below) just gets skipped for that run.
+        continue-on-error: true
+        shell: pwsh
+        run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
+
       - name: NuGet login (OIDC)
         id: nuget-login
         uses: NuGet/login@8d196754b4036150537f80ac539e15c2f1028841 # v1.2.0
@@ -338,21 +386,46 @@ jobs:
       - name: Push to nuget.org
         shell: bash
         run: |
-          dotnet nuget push ./artifacts/*.nupkg \
-            --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
-            --source https://api.nuget.org/v3/index.json \
-            --skip-duplicate
+          set -euo pipefail
+          mapfile -t NUPKGS < <(compgen -G "./artifacts/*.nupkg" || true)
+          if [ "${#NUPKGS[@]}" -eq 0 ]; then
+            echo "::error::No .nupkg files found in ./artifacts to push."
+            exit 1
+          fi
+          for pkg in "${NUPKGS[@]}"; do
+            dotnet nuget push "$pkg" \
+              --api-key "${{ steps.nuget-login.outputs.NUGET_API_KEY }}" \
+              --source https://api.nuget.org/v3/index.json \
+              --skip-duplicate
+          done
 
       - name: Upload signed package artifact
-        uses: actions/upload-artifact@v4
+        # Upload even if push failed — enables manual recovery via nuget.org UI.
+        # Not gated on extract-cert: the signed nupkg is the primary recovery
+        # artifact and must always be available, even if cert extraction fails.
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: published-${{ steps.version.outputs.version }}
-          path: ./artifacts/*.nupkg
+          path: |
+            ./artifacts/*.nupkg
+          retention-days: 90
+
+      - name: Upload signing certificate artifact
+        # Run even if the nuget push failed — the .cer is the recovery artifact
+        # for fingerprint-mismatch failures, so we must upload it regardless.
+        if: ${{ always() && steps.extract-cert.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: signing-cert-${{ steps.version.outputs.version }}
+          path: ./artifacts/signing-cert-*.cer
           retention-days: 90
 
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
         with:
           tag_name: v${{ steps.version.outputs.version }}
           generate_release_notes: true
-          files: ./artifacts/*.nupkg
+          files: |
+            ./artifacts/*.nupkg
+            ./artifacts/signing-cert-*.cer
