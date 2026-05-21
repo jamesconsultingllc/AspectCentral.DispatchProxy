@@ -210,6 +210,11 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
+        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
+        # If parsing the .signature.p7s ever fails (unexpected CMS format,
+        # missing signer, etc.) we still want to publish the package; the
+        # .cer upload (gated below) just gets skipped for that run.
+        continue-on-error: true
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
@@ -364,6 +369,11 @@ jobs:
 
       - name: Extract signing leaf cert
         id: extract-cert
+        # Non-blocking: cert extraction is a recovery aid, not a publish gate.
+        # If parsing the .signature.p7s ever fails (unexpected CMS format,
+        # missing signer, etc.) we still want to publish the package; the
+        # .cer upload (gated below) just gets skipped for that run.
+        continue-on-error: true
         shell: pwsh
         run: ./eng/Extract-SigningLeafCert.ps1 -ArtifactsDir './artifacts' -Version '${{ steps.version.outputs.version }}'
 
