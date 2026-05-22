@@ -213,18 +213,15 @@ jobs:
         shell: pwsh
         run: dotnet tool install --global sign --version ${{ vars.SIGN_TOOL_VERSION || '0.9.1-beta.24469.1' }}
 
-      - name: Sign nupkg + snupkg
+      - name: Sign nupkg(s)
         shell: pwsh
         run: |
-          # Sign both the main package and the symbol package — consumers
-          # who download .snupkg for SourceLink debugging deserve the same
-          # provenance guarantees as the .nupkg they reference.
           sign code trusted-signing `
             --trusted-signing-endpoint "${{ vars.TRUSTED_SIGNING_ENDPOINT }}" `
             --trusted-signing-account "${{ vars.TRUSTED_SIGNING_ACCOUNT }}" `
             --trusted-signing-certificate-profile "${{ vars.TRUSTED_SIGNING_PROFILE }}" `
             --base-directory "$(Get-Location)\artifacts" `
-            "*.nupkg" "*.snupkg"
+            "*.nupkg"
 
       - name: Extract signing leaf cert
         id: extract-cert
@@ -428,18 +425,15 @@ jobs:
         shell: pwsh
         run: dotnet tool install --global sign --version ${{ vars.SIGN_TOOL_VERSION || '0.9.1-beta.24469.1' }}
 
-      - name: Sign nupkg + snupkg
+      - name: Sign nupkg(s)
         shell: pwsh
         run: |
-          # Sign both the main package and the symbol package — consumers
-          # who download .snupkg for SourceLink debugging deserve the same
-          # provenance guarantees as the .nupkg they reference.
           sign code trusted-signing `
             --trusted-signing-endpoint "${{ vars.TRUSTED_SIGNING_ENDPOINT }}" `
             --trusted-signing-account "${{ vars.TRUSTED_SIGNING_ACCOUNT }}" `
             --trusted-signing-certificate-profile "${{ vars.TRUSTED_SIGNING_PROFILE }}" `
             --base-directory "$(Get-Location)\artifacts" `
-            "*.nupkg" "*.snupkg"
+            "*.nupkg"
 
       - name: Extract signing leaf cert
         id: extract-cert
