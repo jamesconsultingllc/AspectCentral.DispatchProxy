@@ -314,9 +314,6 @@ jobs:
           # `compgen -G` (which handles "no matches" without erroring under
           # `set -e`) and push each file individually. `--skip-duplicate`
           # keeps the job idempotent across retries.
-          # Push the main package. Enumerate via `compgen -G` (which handles
-          # "no matches" without erroring under `set -e`). --skip-duplicate
-          # keeps retries idempotent.
           mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true)
           if [ "${#PKGS[@]}" -eq 0 ]; then
             echo "::error::No .nupkg files found in ./artifacts to push."
@@ -536,9 +533,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Push the main package. Enumerate via `compgen -G` (which handles
-          # "no matches" without erroring under `set -e`). --skip-duplicate
-          # keeps retries idempotent.
+          # `dotnet nuget push` does not expand globs and bash does not
+          # expand them inside double quotes — enumerate explicitly with
+          # `compgen -G` (which handles "no matches" without erroring under
+          # `set -e`) and push each file individually. `--skip-duplicate`
+          # keeps the job idempotent across retries.
           mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true)
           if [ "${#PKGS[@]}" -eq 0 ]; then
             echo "::error::No .nupkg files found in ./artifacts to push."
