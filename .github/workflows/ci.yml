@@ -241,11 +241,11 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-${{ steps.version.outputs.version }}
-          # Include symbol package (snupkg) so SourceLink debugging works for
-          # consumers; the publish job pushes both .nupkg and .snupkg.
-          path: |
-            ./artifacts/*.nupkg
-            ./artifacts/*.snupkg
+          # Only the signed .nupkg ships under this artifact name. Trusted
+          # Signing here covers .nupkg only (matching every prior release on
+          # nuget.org), so we deliberately do not bundle .snupkg under a name
+          # that implies the contents are signed.
+          path: ./artifacts/*.nupkg
           retention-days: 90
 
       - name: Upload signing certificate artifact
@@ -314,13 +314,12 @@ jobs:
           # `compgen -G` (which handles "no matches" without erroring under
           # `set -e`) and push each file individually. `--skip-duplicate`
           # keeps the job idempotent across retries.
-          # Push both the main package and the symbol package. When you push
-          # a .nupkg with a sibling .snupkg present, NuGet auto-uploads the
-          # symbols too, but we enumerate explicitly so the run logs which
-          # files were submitted. --skip-duplicate keeps retries idempotent.
-          mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true; compgen -G "./artifacts/*.snupkg" || true)
+          # Push the main package. Enumerate via `compgen -G` (which handles
+          # "no matches" without erroring under `set -e`). --skip-duplicate
+          # keeps retries idempotent.
+          mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true)
           if [ "${#PKGS[@]}" -eq 0 ]; then
-            echo "::error::No .nupkg or .snupkg files found in ./artifacts to push."
+            echo "::error::No .nupkg files found in ./artifacts to push."
             exit 1
           fi
           for pkg in "${PKGS[@]}"; do
@@ -453,11 +452,11 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: signed-${{ steps.version.outputs.version }}
-          # Include symbol package (snupkg) so SourceLink debugging works for
-          # consumers; the publish job pushes both .nupkg and .snupkg.
-          path: |
-            ./artifacts/*.nupkg
-            ./artifacts/*.snupkg
+          # Only the signed .nupkg ships under this artifact name. Trusted
+          # Signing here covers .nupkg only (matching every prior release on
+          # nuget.org), so we deliberately do not bundle .snupkg under a name
+          # that implies the contents are signed.
+          path: ./artifacts/*.nupkg
           retention-days: 90
 
       - name: Upload signing certificate artifact
@@ -537,13 +536,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # Push both the main package and the symbol package. When you push
-          # a .nupkg with a sibling .snupkg present, NuGet auto-uploads the
-          # symbols too, but we enumerate explicitly so the run logs which
-          # files were submitted. --skip-duplicate keeps retries idempotent.
-          mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true; compgen -G "./artifacts/*.snupkg" || true)
+          # Push the main package. Enumerate via `compgen -G` (which handles
+          # "no matches" without erroring under `set -e`). --skip-duplicate
+          # keeps retries idempotent.
+          mapfile -t PKGS < <(compgen -G "./artifacts/*.nupkg" || true)
           if [ "${#PKGS[@]}" -eq 0 ]; then
-            echo "::error::No .nupkg or .snupkg files found in ./artifacts to push."
+            echo "::error::No .nupkg files found in ./artifacts to push."
             exit 1
           fi
           for pkg in "${PKGS[@]}"; do
@@ -560,5 +558,4 @@ jobs:
           generate_release_notes: true
           files: |
             ./artifacts/*.nupkg
-            ./artifacts/*.snupkg
             ./artifacts/signing-cert-*.cer
