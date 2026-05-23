@@ -23,11 +23,14 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
     /// When <see langword="true" />, <see cref="PreInvoke" /> sets
     /// <see cref="AspectContext.ReturnValue" /> to a freshly scheduled non-generic
     /// <see cref="Task" /> (via <see cref="Task.Run(System.Action)" />) to exercise the
-    /// non-generic Task short-circuit path in <c>BaseAspect.HandleAsyncShortCircuit</c>.
-    /// <see cref="Task.CompletedTask" /> is deliberately avoided here: the runtime's cached
-    /// completed-task singleton hits a fast-path in the awaiter machinery that bypasses the
-    /// <c>ContinueWith</c> lambda the test is meant to cover, leaving those lines unhit by
-    /// coverage. A real scheduled Task forces the continuation to execute.
+    /// non-generic Task short-circuit path in <c>BaseAspect.HandleAsyncShortCircuit</c>,
+    /// which schedules <see cref="PostInvoke" /> through <see cref="Task.ContinueWith(System.Action{Task})" />.
+    /// <see cref="Task.CompletedTask" /> is deliberately avoided here: when the captured
+    /// task is already completed, the continuation registered by <c>ContinueWith</c> can
+    /// run inline on the calling thread and coverage tooling has been observed to attribute
+    /// hits to the inlined continuation rather than to the source lines in
+    /// <c>HandleAsyncShortCircuit</c>. A still-pending Task forces the continuation onto a
+    /// thread-pool worker, so the short-circuit branch is unambiguously exercised.
     /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
     /// to exercise the sync short-circuit / fallback PostInvoke path.
     /// </summary>
