@@ -21,8 +21,13 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
     /// When <see langword="true" />, <see cref="PreInvoke" /> sets
-    /// <see cref="AspectContext.ReturnValue" /> to <see cref="Task.CompletedTask" /> (a
-    /// non-generic <see cref="Task" />) to exercise the non-generic Task short-circuit path.
+    /// <see cref="AspectContext.ReturnValue" /> to a freshly scheduled non-generic
+    /// <see cref="Task" /> (via <see cref="Task.Run(System.Action)" />) to exercise the
+    /// non-generic Task short-circuit path in <c>BaseAspect.HandleAsyncShortCircuit</c>.
+    /// <see cref="Task.CompletedTask" /> is deliberately avoided here: the runtime's cached
+    /// completed-task singleton hits a fast-path in the awaiter machinery that bypasses the
+    /// <c>ContinueWith</c> lambda the test is meant to cover, leaving those lines unhit by
+    /// coverage. A real scheduled Task forces the continuation to execute.
     /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
     /// to exercise the sync short-circuit / fallback PostInvoke path.
     /// </summary>
