@@ -1,8 +1,9 @@
 # AspectCentral.DispatchProxy
 
-[![Build Status](https://dev.azure.com/jamesconsulting/Aspect%20Central/_apis/build/status/jamesconsultingllc.AspectCentral.DispatchProxy?branchName=master)](https://dev.azure.com/jamesconsulting/Aspect%20Central/_build/latest?definitionId=24&branchName=master)
-![Azure DevOps tests (branch)](https://img.shields.io/azure-devops/tests/jamesconsulting/Aspect%20Central/24/master)
-![Azure DevOps coverage (branch)](https://img.shields.io/azure-devops/coverage/jamesconsulting/Aspect%20Central/24/master)
+[![CI](https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/jamesconsultingllc/AspectCentral.DispatchProxy/actions/workflows/ci.yml)
+[![NuGet](https://img.shields.io/nuget/v/AspectCentral.DispatchProxy.svg)](https://www.nuget.org/packages/AspectCentral.DispatchProxy/)
+[![Downloads](https://img.shields.io/nuget/dt/AspectCentral.DispatchProxy.svg)](https://www.nuget.org/packages/AspectCentral.DispatchProxy/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > Lightweight, dependency-injection-native **Aspect-Oriented Programming (AOP)** for .NET, built on
 > [`System.Reflection.DispatchProxy`](https://learn.microsoft.com/dotnet/api/system.reflection.dispatchproxy).
