@@ -21,17 +21,20 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
     /// When <see langword="true" />, <see cref="PreInvoke" /> sets
-    /// <see cref="AspectContext.ReturnValue" /> to a non-generic <see cref="Task" /> that is
-    /// guaranteed to still be pending when <c>BaseAspect.HandleAsyncShortCircuit</c> attaches
-    /// its <see cref="Task.ContinueWith(System.Action{Task})" /> continuation. This is what
-    /// forces the continuation to be scheduled on a worker (rather than running inline at
-    /// registration time on an already-completed task) and unambiguously exercises the
-    /// non-generic short-circuit branch.
+    /// <see cref="AspectContext.ReturnValue" /> to a <see cref="Task.Delay(int)" /> Task
+    /// that is observably pending for a measurable window. <c>Task.Delay</c> is timer-backed
+    /// and cannot complete until at least its delay has elapsed, so the Task is guaranteed
+    /// to still be pending when <c>BaseAspect.HandleAsyncShortCircuit</c> attaches its
+    /// <see cref="Task.ContinueWith(System.Action{Task})" /> continuation (which is
+    /// configured with <c>ExecuteSynchronously</c>). That forces the continuation to be
+    /// scheduled rather than running inline at registration time on an already-completed
+    /// task, and unambiguously exercises the non-generic short-circuit branch.
     /// <para>
-    /// A <see cref="TaskCompletionSource" /> is used (rather than <see cref="Task.Run" /> or
-    /// <see cref="Task.CompletedTask" />) because both of those can be observably complete by
-    /// the time <c>HandleAsyncShortCircuit</c> attaches its continuation, allowing the
-    /// continuation to run inline and reintroducing the original coverage-attribution flake.
+    /// <see cref="Task.Run(System.Action)" />, <see cref="Task.CompletedTask" />, and a
+    /// <see cref="TaskCompletionSource" /> completed from a thread-pool worker are all
+    /// deliberately avoided here: each can be observably complete by the time
+    /// <c>ContinueWith</c> is reached, allowing the continuation to run inline and
+    /// reintroducing the original coverage-attribution flake.
     /// </para>
     /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
     /// to exercise the sync short-circuit / fallback PostInvoke path.
@@ -61,16 +64,17 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
         aspectContext.InvokeMethod = false;
         if (!SupplyNonGenericTask) return;
 
-        var tcs = new TaskCompletionSource();
-        // Complete the task on a thread-pool worker after PreInvoke returns, so the Task
-        // is observably pending at the moment BaseAspect.HandleAsyncShortCircuit attaches
-        // its ContinueWith continuation. This is what guarantees the continuation is
-        // scheduled (rather than running inline at registration time on an already-
-        // completed task) and is what the NonGenericTaskShortCircuit coverage test depends
-        // on. Task.Run / Task.CompletedTask can both be observably complete by the time
-        // ContinueWith runs and would reintroduce the inline-execution race.
-        _ = Task.Run(tcs.SetResult);
-        aspectContext.ReturnValue = tcs.Task;
+        // Hand BaseAspect a Task that is observably pending for a measurable window
+        // (Task.Delay returns a timer-backed Task that cannot complete until at least
+        // its delay has elapsed). This guarantees the Task is still pending when
+        // BaseAspect.HandleAsyncShortCircuit attaches its ContinueWith continuation,
+        // even though that continuation is configured with ExecuteSynchronously, so the
+        // continuation cannot run inline at registration time.
+        //
+        // Task.Run / Task.CompletedTask / a TaskCompletionSource completed from a
+        // thread-pool worker can all be observably complete by the time ContinueWith
+        // runs and would reintroduce the inline-execution race.
+        aspectContext.ReturnValue = Task.Delay(50);
     }
 
     /// <inheritdoc />
