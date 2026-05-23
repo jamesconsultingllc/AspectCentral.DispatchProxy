@@ -63,6 +63,33 @@ internal static class BaseAspectAsyncProcessor
             postInvoke(aspectContext);
         }
     }
+
+    /// <summary>
+    /// Awaits a non-generic <see cref="Task" /> short-circuit result and runs
+    /// <paramref name="postInvoke" /> in a <c>finally</c>. Assigning this task to
+    /// <see cref="AspectContext.ReturnValue" /> inside <see cref="BaseAspect{T}.HandleAsyncShortCircuit" />
+    /// ensures the caller's <c>await</c> observes <paramref name="postInvoke" /> having
+    /// completed before resuming, matching the contract of the generic
+    /// <see cref="ProcessFunctionAsync{TK}" /> path.
+    /// </summary>
+    /// <param name="task">The non-generic task supplied by a short-circuiting aspect.</param>
+    /// <param name="aspectContext">The invocation context passed to <paramref name="postInvoke" />.</param>
+    /// <param name="postInvoke">The post-invocation callback to run after the task completes or faults.</param>
+    /// <returns>A task that completes after both <paramref name="task" /> and <paramref name="postInvoke" /> have run.</returns>
+    public static async Task ProcessActionAsync(
+        Task task,
+        AspectContext aspectContext,
+        Action<AspectContext> postInvoke)
+    {
+        try
+        {
+            await task.ConfigureAwait(false);
+        }
+        finally
+        {
+            postInvoke(aspectContext);
+        }
+    }
 }
 
 /// <summary>
@@ -327,7 +354,8 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
     /// <summary>
     /// Handles an async short-circuit: routes <see cref="Task{TResult}" /> results through the
     /// generic async processor so <see cref="PostInvoke" /> observes the unwrapped result, and
-    /// attaches a continuation for non-generic <see cref="Task" /> results.
+    /// wraps non-generic <see cref="Task" /> results so <see cref="PostInvoke" /> is awaited as
+    /// part of the returned task's completion.
     /// </summary>
     private void HandleAsyncShortCircuit(AspectContext aspectContext, Task shortCircuitTask)
     {
@@ -345,13 +373,11 @@ public abstract class BaseAspect<T> : System.Reflection.DispatchProxy where T : 
             return;
         }
 
-        // Non-generic Task — no result to unwrap; just attach PostInvoke.
-        var ctx = aspectContext;
-        shortCircuitTask.ContinueWith(
-            _ => PostInvoke(ctx),
-            CancellationToken.None,
-            TaskContinuationOptions.ExecuteSynchronously,
-            TaskScheduler.Default);
+        // Non-generic Task — wrap so the caller's await on the returned task observes PostInvoke
+        // having completed before resuming. A fire-and-forget ContinueWith would let the caller's
+        // continuation race PostInvoke, which is the bug this branch previously had.
+        aspectContext.ReturnValue = BaseAspectAsyncProcessor.ProcessActionAsync(
+            shortCircuitTask, aspectContext, PostInvoke);
     }
 
     /// <summary>

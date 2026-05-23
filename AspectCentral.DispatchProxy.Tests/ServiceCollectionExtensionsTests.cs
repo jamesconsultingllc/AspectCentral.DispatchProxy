@@ -239,6 +239,57 @@ public class ServiceCollectionExtensionsTests
         // Should not throw.
         _serviceCollection.AddAspectSupport(_aspectConfigurationProvider);
     }
+
+    [Fact]
+    public void AddAspectSupportThrowsWhenProviderIsRegisteredViaImplementationType()
+    {
+        // A type-registered provider has no ImplementationInstance to compare against, so the
+        // overload that accepts an explicit instance must refuse rather than silently swap which
+        // provider is observed at runtime.
+        _serviceCollection.AddSingleton<IAspectConfigurationProvider, InMemoryAspectConfigurationProvider>();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport(_aspectConfigurationProvider));
+        Assert.Contains("implementation type or factory", ex.Message);
+    }
+
+    [Fact]
+    public void AddAspectSupportThrowsWhenProviderIsRegisteredViaFactory()
+    {
+        // Same guard as the type-registered case, but for ImplementationFactory descriptors.
+        _serviceCollection.AddSingleton<IAspectConfigurationProvider>(
+            _ => new InMemoryAspectConfigurationProvider());
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport(_aspectConfigurationProvider));
+        Assert.Contains("implementation type or factory", ex.Message);
+    }
+
+    [Fact]
+    public void AddAspectSupportFluentThrowsWhenProviderIsRegisteredViaImplementationType()
+    {
+        // The fluent (parameterless) overload walks the collection looking for an existing
+        // singleton instance it can reuse; encountering a type-registered provider means there is
+        // no concrete instance available, and reusing it would silently change which provider
+        // ConfigureAspects rewrites against.
+        _serviceCollection.AddSingleton<IAspectConfigurationProvider, InMemoryAspectConfigurationProvider>();
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport());
+        Assert.Contains("without a singleton instance", ex.Message);
+    }
+
+    [Fact]
+    public void AddAspectSupportFluentThrowsWhenProviderIsRegisteredViaFactory()
+    {
+        // Same guard for ImplementationFactory descriptors in the fluent path.
+        _serviceCollection.AddSingleton<IAspectConfigurationProvider>(
+            _ => new InMemoryAspectConfigurationProvider());
+
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => _serviceCollection.AddAspectSupport());
+        Assert.Contains("without a singleton instance", ex.Message);
+    }
 }
 
 internal interface IGenericService<T>

@@ -20,13 +20,16 @@ namespace AspectCentral.DispatchProxy.Tests;
 public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
-    /// When <see langword="true" />, <see cref="PreInvoke" /> sets
-    /// <see cref="AspectContext.ReturnValue" /> to <see cref="Task.CompletedTask" /> (a
-    /// non-generic <see cref="Task" />) to exercise the non-generic Task short-circuit path.
-    /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
-    /// to exercise the sync short-circuit / fallback PostInvoke path.
+    /// When non-<see langword="null" />, <see cref="PreInvoke" /> assigns this task to
+    /// <see cref="AspectContext.ReturnValue" /> to exercise the non-generic Task short-circuit
+    /// branch of <see cref="BaseAspect{T}.HandleAsyncShortCircuit" />. Use a
+    /// <see cref="TaskCompletionSource" /> (non-generic) to obtain a non-generic
+    /// <see cref="Task" />; <c>Task.CompletedTask</c> is internally a
+    /// <c>Task&lt;VoidTaskResult&gt;</c> and would route through the generic branch.
+    /// When <see langword="null" />, <see cref="PreInvoke" /> leaves <c>ReturnValue</c> at its
+    /// default to exercise the sync short-circuit / fallback <c>PostInvoke</c> path.
     /// </summary>
-    public static bool SupplyNonGenericTask { get; set; }
+    public static Task? SuppliedTask { get; set; }
 
     /// <summary>Records that PostInvoke ran.</summary>
     public static bool PostInvokeRan { get; set; }
@@ -49,7 +52,7 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
     public override void PreInvoke(AspectContext aspectContext)
     {
         aspectContext.InvokeMethod = false;
-        if (SupplyNonGenericTask) aspectContext.ReturnValue = Task.CompletedTask;
+        if (SuppliedTask is not null) aspectContext.ReturnValue = SuppliedTask;
     }
 
     /// <inheritdoc />

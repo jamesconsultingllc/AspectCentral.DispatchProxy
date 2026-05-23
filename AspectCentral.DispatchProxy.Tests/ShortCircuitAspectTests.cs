@@ -47,7 +47,7 @@ public class ShortCircuitAspectTests
     [Fact]
     public void SyncShortCircuit_RunsPostInvoke()
     {
-        ShortCircuitAspect<ITestInterface>.SupplyNonGenericTask = false;
+        ShortCircuitAspect<ITestInterface>.SuppliedTask = null;
         ShortCircuitAspect<ITestInterface>.PostInvokeRan = false;
 
         var proxy = CreateProxy();
@@ -58,18 +58,53 @@ public class ShortCircuitAspectTests
 
     /// <summary>
     /// Async method returning <see cref="Task" /> (non-generic), InvokeMethod=false,
-    /// non-generic Task supplied — exercises the <c>ContinueWith</c> branch of
-    /// <c>HandleAsyncShortCircuit</c>.
+    /// non-generic Task supplied — deterministic regression test for the wrapper-task
+    /// contract in <c>HandleAsyncShortCircuit</c>.
+    ///
+    /// The supplied task is a <see cref="TaskCompletionSource" /> (non-generic, so its
+    /// <see cref="Task" /> is a true <see cref="Task" /> rather than a <c>Task&lt;VoidTaskResult&gt;</c>)
+    /// that we hold pending while the proxy is called. The two assertions together pin the
+    /// contract independently of timing:
+    /// <list type="bullet">
+    ///   <item>The returned task is NOT the supplied task. The pre-fix code returned the supplied
+    ///     task verbatim (after attaching a fire-and-forget <c>ContinueWith</c>); the fix returns
+    ///     a distinct wrapper produced by <c>ProcessActionAsync</c>.</item>
+    ///   <item>While the supplied task is still pending, the returned task is also still pending.
+    ///     This rules out the pathological case of the wrapper accidentally completing before the
+    ///     awaited task does.</item>
+    /// </list>
+    /// We then complete the supplied task, await the returned wrapper, and assert PostInvoke ran.
     /// </summary>
     [Fact]
-    public async Task NonGenericTaskShortCircuit_RunsPostInvoke()
+    public async Task NonGenericTaskShortCircuit_ReturnsWrapperThatAwaitsPostInvoke()
     {
-        ShortCircuitAspect<ITestInterface>.SupplyNonGenericTask = true;
+        var tcs = new TaskCompletionSource();
+        ShortCircuitAspect<ITestInterface>.SuppliedTask = tcs.Task;
         ShortCircuitAspect<ITestInterface>.PostInvokeRan = false;
 
-        var proxy = CreateProxy();
-        await proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
+        try
+        {
+            var proxy = CreateProxy();
+            var returned = proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
 
-        Assert.True(ShortCircuitAspect<ITestInterface>.PostInvokeRan);
+            // Contract 1: the proxy hands back a wrapper, not the original supplied task.
+            // (Pre-fix code returned the supplied task verbatim.)
+            Assert.NotSame(tcs.Task, returned);
+            // Contract 2: while the supplied task is pending, the wrapper is pending too.
+            Assert.False(returned.IsCompleted);
+
+            tcs.SetResult();
+            await returned;
+
+            Assert.True(returned.IsCompletedSuccessfully);
+            Assert.True(ShortCircuitAspect<ITestInterface>.PostInvokeRan);
+        }
+        finally
+        {
+            // Reset static state and unblock the TCS even if an assertion above failed,
+            // so a failure here cannot leak state into later tests.
+            ShortCircuitAspect<ITestInterface>.SuppliedTask = null;
+            tcs.TrySetResult();
+        }
     }
 }
