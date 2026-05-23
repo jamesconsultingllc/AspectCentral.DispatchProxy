@@ -57,11 +57,13 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
         aspectContext.InvokeMethod = false;
         if (!SupplyNonGenericTask) return;
 
-        // Task.Run(Action) returns a true non-generic Task (not a Task<VoidTaskResult>),
-        // which is what's required to exercise the non-generic branch of
+        // Task.Delay returns a true non-generic Task (not a Task<VoidTaskResult>), which is
+        // what's required to exercise the non-generic branch of
         // BaseAspect.HandleAsyncShortCircuit. Task.CompletedTask is internally a
         // Task<VoidTaskResult> and would route through the generic branch instead.
-        aspectContext.ReturnValue = Task.Run(() => { });
+        // Task.Delay is timer-backed (not thread-pool scheduled), so it is deterministically
+        // pending when HandleAsyncShortCircuit observes it.
+        aspectContext.ReturnValue = Task.Delay(1);
     }
 
     /// <inheritdoc />
