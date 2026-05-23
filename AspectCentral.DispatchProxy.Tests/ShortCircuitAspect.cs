@@ -22,9 +22,10 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
     /// <summary>
     /// When non-<see langword="null" />, <see cref="PreInvoke" /> assigns this task to
     /// <see cref="AspectContext.ReturnValue" /> to exercise the non-generic Task short-circuit
-    /// branch of <c>BaseAspect.HandleAsyncShortCircuit</c>. Use a <see cref="TaskCompletionSource" />
-    /// (non-generic) to obtain a non-generic <see cref="Task" />; <c>Task.CompletedTask</c> is
-    /// internally a <c>Task&lt;VoidTaskResult&gt;</c> and would route through the generic branch.
+    /// branch of <see cref="BaseAspect{T}.HandleAsyncShortCircuit" />. Use a
+    /// <see cref="TaskCompletionSource" /> (non-generic) to obtain a non-generic
+    /// <see cref="Task" />; <c>Task.CompletedTask</c> is internally a
+    /// <c>Task&lt;VoidTaskResult&gt;</c> and would route through the generic branch.
     /// When <see langword="null" />, <see cref="PreInvoke" /> leaves <c>ReturnValue</c> at its
     /// default to exercise the sync short-circuit / fallback <c>PostInvoke</c> path.
     /// </summary>

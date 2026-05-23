@@ -82,21 +82,29 @@ public class ShortCircuitAspectTests
         ShortCircuitAspect<ITestInterface>.SuppliedTask = tcs.Task;
         ShortCircuitAspect<ITestInterface>.PostInvokeRan = false;
 
-        var proxy = CreateProxy();
-        var returned = proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
+        try
+        {
+            var proxy = CreateProxy();
+            var returned = proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
 
-        // Contract 1: the proxy hands back a wrapper, not the original supplied task.
-        // (Pre-fix code returned the supplied task verbatim.)
-        Assert.NotSame(tcs.Task, returned);
-        // Contract 2: while the supplied task is pending, the wrapper is pending too.
-        Assert.False(returned.IsCompleted);
+            // Contract 1: the proxy hands back a wrapper, not the original supplied task.
+            // (Pre-fix code returned the supplied task verbatim.)
+            Assert.NotSame(tcs.Task, returned);
+            // Contract 2: while the supplied task is pending, the wrapper is pending too.
+            Assert.False(returned.IsCompleted);
 
-        tcs.SetResult();
-        await returned;
+            tcs.SetResult();
+            await returned;
 
-        Assert.True(returned.IsCompletedSuccessfully);
-        Assert.True(ShortCircuitAspect<ITestInterface>.PostInvokeRan);
-
-        ShortCircuitAspect<ITestInterface>.SuppliedTask = null;
+            Assert.True(returned.IsCompletedSuccessfully);
+            Assert.True(ShortCircuitAspect<ITestInterface>.PostInvokeRan);
+        }
+        finally
+        {
+            // Reset static state and unblock the TCS even if an assertion above failed,
+            // so a failure here cannot leak state into later tests.
+            ShortCircuitAspect<ITestInterface>.SuppliedTask = null;
+            tcs.TrySetResult();
+        }
     }
 }

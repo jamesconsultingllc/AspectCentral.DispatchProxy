@@ -66,10 +66,11 @@ internal static class BaseAspectAsyncProcessor
 
     /// <summary>
     /// Awaits a non-generic <see cref="Task" /> short-circuit result and runs
-    /// <paramref name="postInvoke" /> in a <c>finally</c>. Returning this task from
-    /// <see cref="BaseAspect{T}.HandleAsyncShortCircuit" /> ensures the caller's <c>await</c>
-    /// observes <paramref name="postInvoke" /> having completed before resuming, matching the
-    /// contract of the generic <see cref="ProcessFunctionAsync{TK}" /> path.
+    /// <paramref name="postInvoke" /> in a <c>finally</c>. Assigning this task to
+    /// <see cref="AspectContext.ReturnValue" /> inside <see cref="BaseAspect{T}.HandleAsyncShortCircuit" />
+    /// ensures the caller's <c>await</c> observes <paramref name="postInvoke" /> having
+    /// completed before resuming, matching the contract of the generic
+    /// <see cref="ProcessFunctionAsync{TK}" /> path.
     /// </summary>
     /// <param name="task">The non-generic task supplied by a short-circuiting aspect.</param>
     /// <param name="aspectContext">The invocation context passed to <paramref name="postInvoke" />.</param>
