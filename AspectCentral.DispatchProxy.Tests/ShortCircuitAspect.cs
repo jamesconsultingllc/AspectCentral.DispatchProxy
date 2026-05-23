@@ -49,7 +49,7 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
     public override void PreInvoke(AspectContext aspectContext)
     {
         aspectContext.InvokeMethod = false;
-        if (SupplyNonGenericTask) aspectContext.ReturnValue = Task.CompletedTask;
+        if (SupplyNonGenericTask) aspectContext.ReturnValue = Task.Run(() => { });
     }
 
     /// <inheritdoc />
