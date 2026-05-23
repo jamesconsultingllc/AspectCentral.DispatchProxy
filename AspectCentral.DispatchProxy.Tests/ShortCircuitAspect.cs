@@ -21,21 +21,14 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
     /// When <see langword="true" />, <see cref="PreInvoke" /> sets
-    /// <see cref="AspectContext.ReturnValue" /> to a <see cref="Task.Delay(int)" /> Task
-    /// that is observably pending for a measurable window. <c>Task.Delay</c> is timer-backed
-    /// and cannot complete until at least its delay has elapsed, so the Task is guaranteed
-    /// to still be pending when <c>BaseAspect.HandleAsyncShortCircuit</c> attaches its
-    /// <see cref="Task.ContinueWith(System.Action{Task})" /> continuation (which is
-    /// configured with <c>ExecuteSynchronously</c>). That forces the continuation to be
-    /// scheduled rather than running inline at registration time on an already-completed
-    /// task, and unambiguously exercises the non-generic short-circuit branch.
-    /// <para>
-    /// <see cref="Task.Run(System.Action)" />, <see cref="Task.CompletedTask" />, and a
-    /// <see cref="TaskCompletionSource" /> completed from a thread-pool worker are all
-    /// deliberately avoided here: each can be observably complete by the time
-    /// <c>ContinueWith</c> is reached, allowing the continuation to run inline and
-    /// reintroducing the original coverage-attribution flake.
-    /// </para>
+    /// <see cref="AspectContext.ReturnValue" /> to a true non-generic <see cref="Task" />
+    /// (the runtime's <c>Task.CompletedTask</c> is actually a <c>Task&lt;VoidTaskResult&gt;</c>
+    /// and would route through the generic branch, which is why it cannot be used here) to
+    /// exercise the non-generic Task short-circuit branch of
+    /// <c>BaseAspect.HandleAsyncShortCircuit</c>. The production code wraps the supplied
+    /// task in <see cref="BaseAspectAsyncProcessor.ProcessActionAsync" /> and assigns the
+    /// wrapper back to <see cref="AspectContext.ReturnValue" />, so the caller's <c>await</c>
+    /// deterministically observes <see cref="PostInvoke" /> having run.
     /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
     /// to exercise the sync short-circuit / fallback PostInvoke path.
     /// </summary>
@@ -64,17 +57,11 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
         aspectContext.InvokeMethod = false;
         if (!SupplyNonGenericTask) return;
 
-        // Hand BaseAspect a Task that is observably pending for a measurable window
-        // (Task.Delay returns a timer-backed Task that cannot complete until at least
-        // its delay has elapsed). This guarantees the Task is still pending when
-        // BaseAspect.HandleAsyncShortCircuit attaches its ContinueWith continuation,
-        // even though that continuation is configured with ExecuteSynchronously, so the
-        // continuation cannot run inline at registration time.
-        //
-        // Task.Run / Task.CompletedTask / a TaskCompletionSource completed from a
-        // thread-pool worker can all be observably complete by the time ContinueWith
-        // runs and would reintroduce the inline-execution race.
-        aspectContext.ReturnValue = Task.Delay(50);
+        // Task.Run(Action) returns a true non-generic Task (not a Task<VoidTaskResult>),
+        // which is what's required to exercise the non-generic branch of
+        // BaseAspect.HandleAsyncShortCircuit. Task.CompletedTask is internally a
+        // Task<VoidTaskResult> and would route through the generic branch instead.
+        aspectContext.ReturnValue = Task.Run(() => { });
     }
 
     /// <inheritdoc />

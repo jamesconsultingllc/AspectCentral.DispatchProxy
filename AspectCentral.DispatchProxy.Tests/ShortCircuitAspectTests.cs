@@ -58,18 +58,25 @@ public class ShortCircuitAspectTests
 
     /// <summary>
     /// Async method returning <see cref="Task" /> (non-generic), InvokeMethod=false,
-    /// non-generic Task supplied — exercises the <c>ContinueWith</c> branch of
-    /// <c>HandleAsyncShortCircuit</c>.
+    /// non-generic Task supplied — exercises the wrapped <see cref="Task" /> branch of
+    /// <c>HandleAsyncShortCircuit</c> and verifies its contract: the caller's <c>await</c>
+    /// must not complete until <c>PostInvoke</c> has run. Before the fix this branch did a
+    /// fire-and-forget <c>ContinueWith</c> and returned the original task, letting the
+    /// caller's continuation race <c>PostInvoke</c>.
     /// </summary>
     [Fact]
-    public async Task NonGenericTaskShortCircuit_RunsPostInvoke()
+    public async Task NonGenericTaskShortCircuit_RunsPostInvokeBeforeReturnedTaskCompletes()
     {
         ShortCircuitAspect<ITestInterface>.SupplyNonGenericTask = true;
         ShortCircuitAspect<ITestInterface>.PostInvokeRan = false;
 
         var proxy = CreateProxy();
-        await proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
+        var returned = proxy.TestAsync(1, "x", new MyUnitTestClass(1, "x"));
 
+        // Contract: the returned task must not complete until PostInvoke has run.
+        await returned;
+
+        Assert.True(returned.IsCompletedSuccessfully);
         Assert.True(ShortCircuitAspect<ITestInterface>.PostInvokeRan);
     }
 }
