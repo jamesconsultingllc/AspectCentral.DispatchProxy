@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <!--
+            Exclude Roslyn source-generated files (e.g. the [LoggerMessage] generator
+            output for AspectLogs). These files are not authored code, are 100% owned
+            by the generator, and their unreachable IsEnabled fast-path branches drag
+            down the reported coverage without representing anything we can test.
+          -->
+          <ExcludeByFile>**/obj/**/*.g.cs,**/*.Generated.cs</ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>

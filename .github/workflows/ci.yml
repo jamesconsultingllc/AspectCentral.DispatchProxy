@@ -100,6 +100,7 @@ jobs:
             --no-build \
             --logger "trx;LogFileName=test-results.trx" \
             --collect:"XPlat Code Coverage" \
+            --settings AspectCentral.DispatchProxy.Tests/coverlet.runsettings \
             -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
 
       - name: End Sonar analysis
