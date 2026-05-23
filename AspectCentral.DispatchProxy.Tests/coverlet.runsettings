@@ -13,10 +13,15 @@
           -->
 
           <!--
-            Exclude Roslyn source-generated files (e.g. the [LoggerMessage] generator
-            output for AspectLogs). These files are not authored code, are 100% owned
-            by the generator, and their unreachable IsEnabled fast-path branches drag
-            down reported coverage without representing anything we can test.
+            Filter compiler- and generator-emitted code out of the coverage report:
+              * ExcludeByFile: Roslyn source-generator output (the [LoggerMessage]
+                generator emits obj/.../LoggerMessage.g.cs). These files are 100% owned
+                by the generator and their unreachable IsEnabled fast-path branches drag
+                down reported coverage without representing anything we can test.
+              * ExcludeByAttribute: any member tagged GeneratedCodeAttribute,
+                CompilerGeneratedAttribute (covers compiler-synthesized closures,
+                state machines, anonymous types, etc.), or ExcludeFromCodeCoverageAttribute
+                (the standard opt-out marker for code that should not be measured).
           -->
           <ExcludeByFile>**/obj/**/*.g.cs,**/*.Generated.cs</ExcludeByFile>
           <ExcludeByAttribute>GeneratedCodeAttribute,CompilerGeneratedAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>

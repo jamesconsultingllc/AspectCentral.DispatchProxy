@@ -21,16 +21,18 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
 {
     /// <summary>
     /// When <see langword="true" />, <see cref="PreInvoke" /> sets
-    /// <see cref="AspectContext.ReturnValue" /> to a freshly scheduled non-generic
-    /// <see cref="Task" /> (via <see cref="Task.Run(System.Action)" />) to exercise the
-    /// non-generic Task short-circuit path in <c>BaseAspect.HandleAsyncShortCircuit</c>,
-    /// which schedules <see cref="PostInvoke" /> through <see cref="Task.ContinueWith(System.Action{Task})" />.
-    /// <see cref="Task.CompletedTask" /> is deliberately avoided here: when the captured
-    /// task is already completed, the continuation registered by <c>ContinueWith</c> can
-    /// run inline on the calling thread and coverage tooling has been observed to attribute
-    /// hits to the inlined continuation rather than to the source lines in
-    /// <c>HandleAsyncShortCircuit</c>. A still-pending Task forces the continuation onto a
-    /// thread-pool worker, so the short-circuit branch is unambiguously exercised.
+    /// <see cref="AspectContext.ReturnValue" /> to a non-generic <see cref="Task" /> that is
+    /// guaranteed to still be pending when <c>BaseAspect.HandleAsyncShortCircuit</c> attaches
+    /// its <see cref="Task.ContinueWith(System.Action{Task})" /> continuation. This is what
+    /// forces the continuation to be scheduled on a worker (rather than running inline at
+    /// registration time on an already-completed task) and unambiguously exercises the
+    /// non-generic short-circuit branch.
+    /// <para>
+    /// A <see cref="TaskCompletionSource" /> is used (rather than <see cref="Task.Run" /> or
+    /// <see cref="Task.CompletedTask" />) because both of those can be observably complete by
+    /// the time <c>HandleAsyncShortCircuit</c> attaches its continuation, allowing the
+    /// continuation to run inline and reintroducing the original coverage-attribution flake.
+    /// </para>
     /// When <see langword="false" />, <see cref="PreInvoke" /> leaves ReturnValue at its default
     /// to exercise the sync short-circuit / fallback PostInvoke path.
     /// </summary>
@@ -57,7 +59,18 @@ public class ShortCircuitAspect<T> : BaseAspect<T> where T : class?
     public override void PreInvoke(AspectContext aspectContext)
     {
         aspectContext.InvokeMethod = false;
-        if (SupplyNonGenericTask) aspectContext.ReturnValue = Task.Run(() => { });
+        if (!SupplyNonGenericTask) return;
+
+        var tcs = new TaskCompletionSource();
+        // Complete the task on a thread-pool worker after PreInvoke returns, so the Task
+        // is observably pending at the moment BaseAspect.HandleAsyncShortCircuit attaches
+        // its ContinueWith continuation. This is what guarantees the continuation is
+        // scheduled (rather than running inline at registration time on an already-
+        // completed task) and is what the NonGenericTaskShortCircuit coverage test depends
+        // on. Task.Run / Task.CompletedTask can both be observably complete by the time
+        // ContinueWith runs and would reintroduce the inline-execution race.
+        _ = Task.Run(tcs.SetResult);
+        aspectContext.ReturnValue = tcs.Task;
     }
 
     /// <inheritdoc />
